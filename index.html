@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Struk BBM</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.577.0/dist/umd/lucide.min.js"></script>
+<style>
+:root{--ink:#102a43;--muted:#627d98;--paper:#fffdf8;--navy:#0b1f33;--blue:#0077b6;--teal:#0f766e}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:var(--ink);background:#eef4f8}
+.topbar{background:var(--navy)}.form-panel{box-shadow:0 18px 45px rgba(16,42,67,.09)}
+.receipt-wrap{background:repeating-linear-gradient(45deg,#e9eff4 0 1px,transparent 1px 9px)}
+.receipt-paper{width:min(100%,80mm);background:var(--paper);color:#151515;font-family:"Courier New",monospace;box-shadow:0 14px 28px rgba(16,42,67,.18);position:relative}
+.receipt-paper.paper-58{width:min(100%,58mm)}
+.receipt-line{border-top:1px dashed #3f3f3f}.tab-button{border-bottom:3px solid transparent}
+.tab-button.active{color:var(--blue);border-color:var(--blue)}
+.field:focus{outline:3px solid rgba(0,119,182,.18);border-color:var(--blue)}
+.history-row:hover{background:#f5f9fc}.print-only{display:none}
+.receipt-logo{display:block;max-width:112px;width:52%;height:auto;max-height:68px;object-fit:contain;margin:0 auto 10px}
+.header-logo{display:block;width:112px;height:42px;object-fit:contain;flex:none}
+@media print{
+ html,body{background:#fff!important;margin:0!important;padding:0!important}
+ .no-print{display:none!important}.print-only{display:block!important}
+ #receipt-print{display:block!important;margin:0!important;box-shadow:none!important}
+}
+@page{size:80mm auto;margin:0}
+</style>
+</head>
+<body>
+<div class="app-shell">
+<header class="topbar no-print px-4 py-4 sm:px-8">
+<div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
+<div class="flex items-center gap-3">
+<div class="header-logo flex items-center justify-center rounded-lg bg-white text-xs font-bold text-red-600">PERTAMINA</div>
+<div><h1 class="font-bold tracking-tight text-white text-[22px]">Struk BBM</h1>
+<p class="text-sm text-slate-300">Kasir thermal yang praktis</p></div></div>
+<div class="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-200">
+<span id="sync-dot" class="h-2 w-2 rounded-full bg-amber-400"></span><span id="sync-status">Menyiapkan riwayat...</span>
+</div></div></header>
+
+<main class="w-full"><div class="no-print mx-auto max-w-7xl px-4 py-6 sm:px-8">
+<nav class="mb-6 flex gap-7 border-b border-slate-200">
+<button id="tab-transaksi" class="tab-button active py-3 text-sm font-bold" type="button">Transaksi Baru</button>
+<button id="tab-riwayat" class="tab-button py-3 text-sm font-bold text-slate-500" type="button">Riwayat Struk</button>
+</nav>
+<div id="notice" class="mb-5 hidden rounded-xl border px-4 py-3 text-sm" role="status"></div>
+
+<section id="transaction-view">
+<div class="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,.85fr)]">
+<section class="form-panel rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+<div><h2 class="font-bold text-[24px]">Buat struk transaksi</h2>
+<p class="mt-1 text-sm text-slate-500">Lengkapi data transaksi. Kolom bertanda wajib perlu diisi.</p></div>
+<button id="new-receipt-button" class="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold hover:bg-slate-50" type="button"><i data-lucide="file-plus-2" class="h-4 w-4"></i>Struk Baru</button>
+</div>
+
+<form id="receipt-form" novalidate class="space-y-5">
+<div class="grid gap-4 sm:grid-cols-2">
+<div><label class="mb-1.5 block text-sm font-bold">Nomor struk</label><input id="receipt-number" class="field w-full rounded-lg border bg-slate-50 px-3 py-2.5 text-sm" readonly></div>
+<div><label class="mb-1.5 block text-sm font-bold">Tanggal & jam</label><input id="transaction-date" type="datetime-local" class="field w-full rounded-lg border px-3 py-2.5 text-sm"></div>
+<div><label class="mb-1.5 block text-sm font-bold">Nama operator *</label><input id="operator" required class="field w-full rounded-lg border px-3 py-2.5 text-sm"></div>
+<div><label class="mb-1.5 block text-sm font-bold">Nama SPBU / toko *</label><input id="store-name" required class="field w-full rounded-lg border px-3 py-2.5 text-sm"></div>
+<div><label class="mb-1.5 block text-sm font-bold">Nomor kendaraan *</label><input id="vehicle-number" required class="field w-full rounded-lg border px-3 py-2.5 text-sm uppercase"></div>
+<div><label class="mb-1.5 block text-sm font-bold">Jenis BBM *</label>
+<select id="fuel-type" class="field w-full rounded-lg border bg-white px-3 py-2.5 text-sm">
+<option>Pertalite</option><option>Pertamax</option><option>Solar</option><option>Dexlite</option><option>Pertamax Turbo</option><option value="Lainnya">Lainnya / Tambah jenis</option>
+</select></div>
+<div id="custom-fuel-wrap" class="hidden sm:col-span-2"><label class="mb-1.5 block text-sm font-bold">Jenis BBM tambahan *</label><input id="custom-fuel" class="field w-full rounded-lg border px-3 py-2.5 text-sm"></div>
+<div class="sm:col-span-2"><label class="mb-1.5 block text-sm font-bold">Mode perhitungan</label>
+<select id="calculation-mode" class="field w-full rounded-lg border bg-white px-3 py-2.5 text-sm"><option value="total">Hitung dari total</option><option value="liter">Hitung dari liter</option></select></div>
+<div><label class="mb-1.5 block text-sm font-bold">Jumlah liter *</label><input id="liters" type="number" min="0" step="0.001" class="field w-full rounded-lg border px-3 py-2.5 text-sm"><p id="liters-error" class="mt-1 min-h-5 text-xs text-red-700"></p></div>
+<div><label class="mb-1.5 block text-sm font-bold">Harga per liter (Rp) *</label><input id="price" type="number" min="0" step="1" class="field w-full rounded-lg border px-3 py-2.5 text-sm"><p id="price-error" class="mt-1 min-h-5 text-xs text-red-700"></p></div>
+<div class="sm:col-span-2"><label class="mb-1.5 block text-sm font-bold">Total pembayaran (Rp) *</label><input id="payment-total" type="number" min="0" step="1" class="field w-full rounded-lg border px-3 py-2.5 text-sm"><p id="total-error" class="mt-1 min-h-5 text-xs text-red-700"></p></div>
+<div><label class="mb-1.5 block text-sm font-bold">Metode pembayaran *</label><select id="payment-method" class="field w-full rounded-lg border bg-white px-3 py-2.5 text-sm"><option>Tunai</option><option>QRIS</option><option>Kartu Debit</option><option>Kartu Kredit</option></select></div>
+<div><label class="mb-1.5 block text-sm font-bold">Ukuran kertas thermal</label><select id="paper-width" class="field w-full rounded-lg border bg-white px-3 py-2.5 text-sm"><option value="80">80 mm — standar</option><option value="58">58 mm — ringkas</option></select></div>
+</div>
+<div><label class="mb-1.5 block text-sm font-bold">Catatan (opsional)</label><textarea id="notes" rows="2" class="field w-full resize-y rounded-lg border px-3 py-2.5 text-sm"></textarea></div>
+
+<div class="rounded-xl bg-slate-900 px-4 py-4 text-white"><div class="flex items-end justify-between gap-4">
+<div><p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Perhitungan</p><p id="calculation-detail" class="mt-1 text-sm text-slate-300">0 L × Rp0</p></div>
+<div class="text-right"><p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Total</p><output id="form-total" class="mt-1 block text-2xl font-bold">Rp0</output></div>
+</div></div>
+
+<div class="grid gap-3 sm:grid-cols-2">
+<button id="save-button" class="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 font-bold text-white hover:brightness-95" type="submit"><i data-lucide="save" class="h-5 w-5"></i>Simpan Struk</button>
+<button id="print-button" class="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 font-bold text-white shadow-lg hover:brightness-110" type="button"><i data-lucide="printer" class="h-5 w-5"></i>Cetak Langsung ke Printer Thermal</button>
+</div>
+
+<section class="rounded-xl border bg-slate-50 px-4 py-4"><div class="flex flex-wrap items-center justify-between gap-3">
+<div><p class="text-sm font-bold">Koneksi printer</p><p id="printer-status" class="mt-0.5 text-xs text-slate-500">Printer belum terhubung</p></div>
+<div class="flex gap-2"><button id="connect-button" class="inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm font-bold" type="button"><i data-lucide="usb" class="h-4 w-4"></i>Hubungkan Printer</button>
+<button id="disconnect-button" class="hidden inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm font-bold text-red-700" type="button">Putuskan</button></div>
+</div></section>
+</form></section>
+
+<aside class="receipt-wrap flex min-h-[620px] items-start justify-center rounded-2xl border p-5 sm:p-8">
+<div id="receipt-preview" class="receipt-paper px-5 py-7 text-xs leading-relaxed">
+<div class="text-center"><div id="preview-logo" class="receipt-logo rounded bg-white py-2 text-lg font-bold text-red-600">PERTAMINA</div>
+<div id="preview-store" class="mb-2 text-lg font-bold tracking-tight">-</div><div class="text-[10px] uppercase tracking-widest">STRUK PEMBELIAN BBM</div></div>
+<div class="receipt-line my-4"></div>
+<div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1"><span>No.</span><span id="preview-number" class="text-right">-</span><span>Waktu</span><span id="preview-date" class="text-right">-</span><span>Operator</span><span id="preview-operator" class="text-right">-</span><span>Kendaraan</span><span id="preview-vehicle" class="text-right">-</span><span>Bayar</span><span id="preview-payment" class="text-right">-</span></div>
+<div class="receipt-line my-4"></div>
+<div class="flex justify-between font-bold"><span id="preview-fuel">-</span><span id="preview-fuel-price">Rp0</span></div>
+<div class="mt-1 flex justify-between"><span id="preview-liter">0 L</span><span id="preview-subtotal">Rp0</span></div>
+<div class="receipt-line my-4"></div>
+<div class="flex items-center justify-between text-base font-bold"><span>TOTAL</span><span id="preview-total">Rp0</span></div>
+<div id="preview-notes-wrap" class="mt-4 hidden border-t border-dashed pt-3"><span class="block font-bold">Catatan</span><span id="preview-notes" class="block whitespace-pre-wrap"></span></div>
+<div class="receipt-line my-4"></div><div class="text-center text-[10px]"><p class="font-bold">TERIMA KASIH</p><p class="mt-1">Simpan struk ini sebagai bukti transaksi.</p></div>
+</div></aside></div></section>
+
+<section id="history-view" class="hidden">
+<div class="form-panel rounded-2xl border bg-white p-5 sm:p-7">
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4"><div><h2 class="font-bold text-[24px]">Riwayat struk</h2><p class="mt-1 text-sm text-slate-500">Cari, lihat, cetak ulang, atau hapus struk yang pernah disimpan.</p></div>
+<div class="w-full sm:w-80"><div class="relative"><i data-lucide="search" class="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400"></i><input id="history-search" class="field w-full rounded-lg border py-2.5 pl-10 pr-3 text-sm" type="search" placeholder="Cari nomor struk, tanggal, atau kendaraan"></div></div></div>
+<p id="history-count" class="mb-4 text-sm font-semibold text-slate-500">Memuat riwayat...</p>
+<div class="overflow-x-auto rounded-xl border"><table class="w-full min-w-[830px] text-left text-sm"><thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-3">Nomor & waktu</th><th class="px-4 py-3">Kendaraan</th><th class="px-4 py-3">Produk</th><th class="px-4 py-3 text-right">Total</th><th class="px-4 py-3 text-right">Tindakan</th></tr></thead><tbody id="history-body"></tbody></table></div>
+<p id="history-empty" class="hidden py-10 text-center text-sm text-slate-500">Belum ada struk yang sesuai dengan pencarian.</p>
+</div></section></div>
+<div class="print-only"><div id="receipt-print" class="receipt-paper text-xs leading-relaxed"></div></div>
+</main></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fields={number:$('receipt-number'),date:$('transaction-date'),operator:$('operator'),store:$('store-name'),vehicle:$('vehicle-number'),fuel:$('fuel-type'),customFuel:$('custom-fuel'),mode:$('calculation-mode'),liters:$('liters'),price:$('price'),paymentTotal:$('payment-total'),payment:$('payment-method'),notes:$('notes'),paper:$('paper-width')};
+let records=[],loadedRecordId=null,printerConnection={type:null,device:null,usbEndpoint:null};
+const KEY='struk_bbm_records_v1';
+const rupiah=v=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Math.round(Number(v)||0));
+const literText=v=>Number(v||0).toLocaleString('id-ID',{maximumFractionDigits:3});
+const localDate=iso=>iso?new Intl.DateTimeFormat('id-ID',{dateStyle:'short',timeStyle:'short'}).format(new Date(iso)):'-';
+const dateInputValue=(d=new Date())=>new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+const newNumber=()=>{const d=new Date();return `BBM-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${String(d.getTime()).slice(-5)}`};
+const selectedFuel=()=>fields.fuel.value==='Lainnya'?fields.customFuel.value.trim():fields.fuel.value;
+const saveDB=()=>localStorage.setItem(KEY,JSON.stringify(records));
+function notify(message,type='success'){const e=$('notice'),c={success:'border-emerald-200 bg-emerald-50 text-emerald-800',error:'border-red-200 bg-red-50 text-red-800',info:'border-cyan-200 bg-cyan-50 text-cyan-800'};e.className=`mb-5 rounded-xl border px-4 py-3 text-sm ${c[type]||c.info}`;e.textContent=message;e.classList.remove('hidden');clearTimeout(notify.t);notify.t=setTimeout(()=>e.classList.add('hidden'),5000)}
+function setSync(t,color='bg-emerald-400'){$('sync-status').textContent=t;$('sync-dot').className=`h-2 w-2 rounded-full ${color}`}
+function validateNumeric(show){const p=+fields.price.value,l=+fields.liters.value,t=+fields.paymentTotal.value;const pm=p>0?'':'Harga per liter harus lebih besar dari nol.';const lm=fields.mode.value==='liter'&&!(l>0)?'Jumlah liter harus lebih besar dari nol.':'';const tm=fields.mode.value==='total'&&!(t>0)?'Total pembayaran harus lebih besar dari nol.':'';$('price-error').textContent=show||p?pm:'';$('liters-error').textContent=show||l?lm:'';$('total-error').textContent=show||t?tm:'';return !pm&&!lm&&!tm}
+function getDraft(){const l=+fields.liters.value,p=+fields.price.value;return{id:loadedRecordId||crypto.randomUUID(),nomor_struk:fields.number.value.trim(),tanggal:fields.date.value?new Date(fields.date.value).toISOString():'',operator:fields.operator.value.trim(),nama_spbu:fields.store.value.trim(),nomor_kendaraan:fields.vehicle.value.trim().toUpperCase(),jenis_bbm:selectedFuel(),jumlah_liter:+l.toFixed(3),harga_per_liter:p,total:Math.round(l*p),metode_pembayaran:fields.payment.value,catatan:fields.notes.value.trim()}}
+function validateDraft(d){if(!validateNumeric(true))return'Perbaiki nilai transaksi terlebih dahulu.';if(!d.nomor_struk||!d.tanggal||!d.operator||!d.nama_spbu||!d.nomor_kendaraan||!d.jenis_bbm)return'Lengkapi semua field wajib sebelum melanjutkan.';return''}
+function updateCalculation(){let p=+fields.price.value,l=+fields.liters.value,t=+fields.paymentTotal.value;if(fields.mode.value==='total'&&p>0&&t>0){l=t/p;fields.liters.value=l.toFixed(3)}if(fields.mode.value==='liter'&&p>0&&l>0){t=Math.round(l*p);fields.paymentTotal.value=t}updatePreview();validateNumeric(false)}
+function updatePreview(r=getDraft()){const total=Math.round((+r.jumlah_liter||0)*(+r.harga_per_liter||0));$('calculation-detail').textContent=`${literText(r.jumlah_liter)} L × ${rupiah(r.harga_per_liter)}`;$('form-total').textContent=rupiah(total);const m={'preview-store':r.nama_spbu||'-','preview-number':r.nomor_struk||'-','preview-date':localDate(r.tanggal),'preview-operator':r.operator||'-','preview-vehicle':r.nomor_kendaraan||'-','preview-payment':r.metode_pembayaran||'-','preview-fuel':r.jenis_bbm||'-','preview-fuel-price':rupiah(r.harga_per_liter),'preview-liter':`${literText(r.jumlah_liter)} L`,'preview-subtotal':rupiah(total),'preview-total':rupiah(total),'preview-notes':r.catatan||''};Object.entries(m).forEach(([i,v])=>$(i).textContent=v);$('preview-notes-wrap').classList.toggle('hidden',!r.catatan);$('receipt-preview').classList.toggle('paper-58',fields.paper.value==='58')}
+function toggleMode(){const total=fields.mode.value==='total';fields.liters.readOnly=total;fields.paymentTotal.readOnly=!total;fields.liters.classList.toggle('bg-slate-100',total);fields.paymentTotal.classList.toggle('bg-slate-100',!total);updateCalculation()}
+function resetForm(){loadedRecordId=null;fields.number.value=newNumber();fields.date.value=dateInputValue();fields.operator.value='';fields.store.value='';fields.vehicle.value='';fields.fuel.value='Pertalite';fields.customFuel.value='';fields.mode.value='total';fields.liters.value='';fields.price.value='';fields.paymentTotal.value='';fields.payment.value='Tunai';fields.notes.value='';fields.paper.value='80';$('custom-fuel-wrap').classList.add('hidden');toggleMode();updatePreview()}
+function loadRecord(r){loadedRecordId=r.id;fields.number.value=r.nomor_struk;fields.date.value=dateInputValue(new Date(r.tanggal));fields.operator.value=r.operator;fields.store.value=r.nama_spbu;fields.vehicle.value=r.nomor_kendaraan;const exists=[...fields.fuel.options].some(o=>o.value===r.jenis_bbm);fields.fuel.value=exists?r.jenis_bbm:'Lainnya';fields.customFuel.value=exists?'':r.jenis_bbm;$('custom-fuel-wrap').classList.toggle('hidden',exists);fields.mode.value='liter';fields.liters.value=r.jumlah_liter;fields.price.value=r.harga_per_liter;fields.paymentTotal.value=r.total;fields.payment.value=r.metode_pembayaran;fields.notes.value=r.catatan;toggleMode();updatePreview(r)}
+function showTab(t){const tx=t==='transaction';$('transaction-view').classList.toggle('hidden',!tx);$('history-view').classList.toggle('hidden',tx);$('tab-transaksi').classList.toggle('active',tx);$('tab-riwayat').classList.toggle('active',!tx)}
+function renderHistory(){const q=$('history-search').value.trim().toLowerCase(),m=records.filter(r=>[r.nomor_struk,r.tanggal,r.nomor_kendaraan,r.jenis_bbm].join(' ').toLowerCase().includes(q)),b=$('history-body');b.innerHTML='';m.forEach(r=>{const tr=document.createElement('tr');tr.className='history-row border-t';tr.innerHTML=`<td class="px-4 py-3"><p class="font-bold">${r.nomor_struk}</p><p class="mt-0.5 text-xs text-slate-500">${localDate(r.tanggal)}</p></td><td class="px-4 py-3 font-semibold">${r.nomor_kendaraan}</td><td class="px-4 py-3"><p>${r.jenis_bbm}</p><p class="mt-0.5 text-xs text-slate-500">${literText(r.jumlah_liter)} L × ${rupiah(r.harga_per_liter)}</p></td><td class="px-4 py-3 text-right font-bold">${rupiah(r.total)}</td><td class="px-4 py-3"><div class="flex justify-end gap-2"><button class="view rounded-md border px-2.5 py-1.5 text-xs font-bold">Lihat</button><button class="print rounded-md border border-cyan-700 px-2.5 py-1.5 text-xs font-bold text-cyan-800">Cetak</button><button class="del rounded-md border border-red-200 px-2.5 py-1.5 text-xs font-bold text-red-700">Hapus</button></div></td>`;tr.querySelector('.view').onclick=()=>{loadRecord(r);showTab('transaction');notify('Struk dimuat dari riwayat.','info')};tr.querySelector('.print').onclick=()=>{loadRecord(r);showTab('transaction');printReceipt()};tr.querySelector('.del').onclick=()=>{if(confirm('Hapus struk ini?')){records=records.filter(x=>x.id!==r.id);saveDB();renderHistory();setSync(`${records.length} struk tersimpan`);notify('Struk berhasil dihapus.')}};b.appendChild(tr)});$('history-empty').classList.toggle('hidden',m.length>0);$('history-count').textContent=`${m.length} dari ${records.length} struk ditampilkan`}
+async function saveReceipt(e){e.preventDefault();const d=getDraft(),err=validateDraft(d);if(err)return notify(err,'error');const i=records.findIndex(x=>x.id===d.id);if(i>=0)records[i]=d;else records.unshift(d);saveDB();loadedRecordId=d.id;renderHistory();setSync(`${records.length} struk tersimpan`);notify(i>=0?'Perubahan struk berhasil disimpan.':'Struk berhasil disimpan ke riwayat.')}
+function applyPrintLayout(){const w=fields.paper.value==='58'?'58mm':'80mm';const p=fields.paper.value==='58'?'2mm':'3mm';const s=document.createElement('style');s.id='dynamic-print';s.textContent=`@page{size:${w} auto;margin:0}#receipt-print{width:${w}!important;padding:${p}!important}`;document.getElementById('dynamic-print')?.remove();document.head.appendChild(s);$('receipt-print').className=`receipt-paper ${fields.paper.value==='58'?'paper-58':''} text-xs leading-relaxed`;$('receipt-print').innerHTML=$('receipt-preview').innerHTML}
+function browserPrint(){applyPrintLayout();window.print()}
+function receiptText(d){return `${d.nama_spbu}\nSTRUK PEMBELIAN BBM\n--------------------------------\nNo. ${d.nomor_struk}\n${localDate(d.tanggal)}\nOperator: ${d.operator}\nKendaraan: ${d.nomor_kendaraan}\nBayar: ${d.metode_pembayaran}\n--------------------------------\n${d.jenis_bbm}\n${literText(d.jumlah_liter)} L x ${rupiah(d.harga_per_liter)}\nTOTAL: ${rupiah(d.total)}\n${d.catatan?`Catatan: ${d.catatan}\n`:''}--------------------------------\nTERIMA KASIH\n\n\n`}
+async function connectPrinter(){try{if(!('serial'in navigator)){return notify('Browser belum mendukung Web Serial. Gunakan Chrome/Edge atau gunakan tombol cetak browser.','info')}const port=await navigator.serial.requestPort();await port.open({baudRate:9600});printerConnection={type:'serial',device:port};$('printer-status').textContent='Printer terhubung';$('connect-button').classList.add('hidden');$('disconnect-button').classList.remove('hidden');notify('Printer berhasil terhubung.','success')}catch(e){notify('Koneksi printer gagal atau dibatalkan.','error')}}
+async function disconnectPrinter(){try{if(printerConnection.device)await printerConnection.device.close()}catch(e){}printerConnection={type:null,device:null};$('printer-status').textContent='Printer belum terhubung';$('connect-button').classList.remove('hidden');$('disconnect-button').classList.add('hidden')}
+async function printReceipt(){const d=getDraft(),err=validateDraft(d);if(err)return notify(err,'error');updatePreview(d);if(!printerConnection.type)return browserPrint();try{const enc=new TextEncoder(),data=enc.encode('\x1B\x40'+receiptText(d)+'\x1D\x56\x00'),w=printerConnection.device.writable.getWriter();await w.write(data);w.releaseLock();notify('Struk berhasil dikirim ke printer thermal.','success')}catch(e){notify('Cetak langsung gagal, dialihkan ke dialog print.','info');browserPrint()}}
+document.addEventListener('DOMContentLoaded',()=>{lucide.createIcons();try{records=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){records=[]}setSync(`${records.length} struk tersimpan`);resetForm();renderHistory();
+$('tab-transaksi').onclick=()=>showTab('transaction');$('tab-riwayat').onclick=()=>showTab('history');$('receipt-form').onsubmit=saveReceipt;$('new-receipt-button').onclick=()=>{resetForm();notify('Form transaksi baru siap digunakan.','info')};$('print-button').onclick=printReceipt;$('connect-button').onclick=connectPrinter;$('disconnect-button').onclick=disconnectPrinter;$('history-search').oninput=renderHistory;
+fields.mode.onchange=toggleMode;fields.fuel.onchange=()=>{$('custom-fuel-wrap').classList.toggle('hidden',fields.fuel.value!=='Lainnya');updatePreview()};[fields.liters,fields.price,fields.paymentTotal].forEach(x=>x.oninput=updateCalculation);[fields.number,fields.date,fields.operator,fields.store,fields.customFuel,fields.payment,fields.notes,fields.paper].forEach(x=>x.oninput=updatePreview);fields.paper.onchange=updatePreview;fields.vehicle.oninput=()=>{fields.vehicle.value=fields.vehicle.value.toUpperCase();updatePreview()}})
+</script>
+</body>
+</html>
