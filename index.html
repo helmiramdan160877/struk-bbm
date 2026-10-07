@@ -14,8 +14,10 @@
 .receipt-paper{width:min(100%,80mm);background:var(--paper);color:#151515;font-family:"Courier New",monospace;box-shadow:0 14px 28px rgba(16,42,67,.18);position:relative}
 .receipt-paper.text-xs{font-size:10px;line-height:1.35}
 .receipt-paper .text-lg{font-size:14px}
-.receipt-paper.px-4.py-6{padding:6px 10px}
-.receipt-paper .my-4{margin-top:6px;margin-bottom:6px}
+.receipt-paper.px-4.py-6{padding:4px 8px}
+.receipt-paper .my-4{margin-top:3px;margin-bottom:3px}
+.receipt-paper .receipt-logo{width:40%;max-width:80px;max-height:42px;margin-bottom:4px}
+.receipt-paper .receipt-note{line-height:1.05}
 .receipt-paper.paper-58{width:min(100%,58mm)}
 .receipt-line{border-top:1px dashed #3f3f3f}.tab-button{border-bottom:3px solid transparent}
 .tab-button.active{color:var(--blue);border-color:var(--blue)}
@@ -144,9 +146,9 @@
 <div class="receipt-line my-4"></div>
 <div>No. Plat : <span id="preview-vehicle">-</span></div>
 <div class="receipt-line my-4"></div>
-<div class="text-center text-[10px] leading-relaxed">
+<div class="receipt-note text-center text-[10px] leading-relaxed">
 Anda mendapat subsidi dari<br>
-Pemerintah sebesar Rp <span id="preview-subsidy-note">0</span><br><br>
+Pemerintah sebesar Rp <span id="preview-subsidy-note">0</span><br>
 (Perhitungan Subsidi Unauthorized<br>
 atau Estimasi). Gunakan BBM<br>
 Subsidi secara bijak.
