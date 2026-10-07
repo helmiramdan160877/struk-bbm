@@ -12,6 +12,10 @@
 .topbar{background:var(--navy)}.form-panel{box-shadow:0 18px 45px rgba(16,42,67,.09)}
 .receipt-wrap{background:repeating-linear-gradient(45deg,#e9eff4 0 1px,transparent 1px 9px)}
 .receipt-paper{width:min(100%,80mm);background:var(--paper);color:#151515;font-family:"Courier New",monospace;box-shadow:0 14px 28px rgba(16,42,67,.18);position:relative}
+.receipt-paper.text-xs{font-size:10px;line-height:1.35}
+.receipt-paper .text-lg{font-size:14px}
+.receipt-paper.px-4.py-6{padding:6px 10px}
+.receipt-paper .my-4{margin-top:6px;margin-bottom:6px}
 .receipt-paper.paper-58{width:min(100%,58mm)}
 .receipt-line{border-top:1px dashed #3f3f3f}.tab-button{border-bottom:3px solid transparent}
 .tab-button.active{color:var(--blue);border-color:var(--blue)}
@@ -83,6 +87,12 @@
 <div><p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Perhitungan</p><p id="calculation-detail" class="mt-1 text-sm text-slate-300">0 L × Rp0</p></div>
 <div class="text-right"><p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Total</p><output id="form-total" class="mt-1 block text-2xl font-bold">Rp0</output></div>
 </div></div>
+<div class="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-4 text-sm text-slate-700">
+<p class="font-bold text-slate-900">Rincian estimasi subsidi</p>
+<p class="mt-2">Total tanpa subsidi: <span id="calculation-normal">0 L × Rp158.920 = Rp0</span></p>
+<p>Estimasi subsidi: <span id="calculation-subsidy">Rp0 − Rp0 = Rp0</span></p>
+<p class="mt-1 text-xs text-slate-500">Perkiraan dihitung dari harga non-subsidi dikurangi total yang dibayar.</p>
+</div>
 
 <div class="grid gap-3 sm:grid-cols-2">
 <button id="save-button" class="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 font-bold text-white hover:brightness-95" type="submit"><i data-lucide="save" class="h-5 w-5"></i>Simpan Struk</button>
@@ -155,47 +165,467 @@ Subsidi secara bijak.
 </main></div>
 
 <script>
-const $=id=>document.getElementById(id);
-const fields={number:$('receipt-number'),date:$('transaction-date'),operator:$('operator'),store:$('store-name'),code:$('receipt-code'),location:$('location'),shift:$('shift'),pump:$('pump-number'),vehicle:$('vehicle-number'),fuel:$('fuel-type'),customFuel:$('custom-fuel'),mode:$('calculation-mode'),liters:$('liters'),price:$('price'),nonSubsidy:$('non-subsidy-price'),paymentTotal:$('payment-total'),payment:$('payment-method'),notes:$('notes'),paper:$('paper-width')};
-let records=[],loadedRecordId=null,printerConnection={type:null,device:null,usbEndpoint:null};
-const KEY='struk_bbm_records_v1';
-const rupiah=v=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Math.round(Number(v)||0));
-const literText=v=>Number(v||0).toLocaleString('id-ID',{maximumFractionDigits:3});
-const localDate=iso=>iso?new Intl.DateTimeFormat('id-ID',{dateStyle:'short',timeStyle:'short'}).format(new Date(iso)):'-';
-const dateInputValue=(d=new Date())=>new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);
-const newNumber=()=>{const d=new Date();return `BBM-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${String(d.getTime()).slice(-5)}`};
-const selectedFuel=()=>fields.fuel.value==='Lainnya'?fields.customFuel.value.trim():fields.fuel.value;
-const saveDB=()=>localStorage.setItem(KEY,JSON.stringify(records));
-function notify(message,type='success'){const e=$('notice'),c={success:'border-emerald-200 bg-emerald-50 text-emerald-800',error:'border-red-200 bg-red-50 text-red-800',info:'border-cyan-200 bg-cyan-50 text-cyan-800'};e.className=`mb-5 rounded-xl border px-4 py-3 text-sm ${c[type]||c.info}`;e.textContent=message;e.classList.remove('hidden');clearTimeout(notify.t);notify.t=setTimeout(()=>e.classList.add('hidden'),5000)}
-function setSync(t,color='bg-emerald-400'){$('sync-status').textContent=t;$('sync-dot').className=`h-2 w-2 rounded-full ${color}`}
-function validateNumeric(show){const p=+fields.price.value,l=+fields.liters.value,t=+fields.paymentTotal.value;const pm=p>0?'':'Harga per liter harus lebih besar dari nol.';const lm=fields.mode.value==='liter'&&!(l>0)?'Jumlah liter harus lebih besar dari nol.':'';const tm=fields.mode.value==='total'&&!(t>0)?'Total pembayaran harus lebih besar dari nol.':'';$('price-error').textContent=show||p?pm:'';$('liters-error').textContent=show||l?lm:'';$('total-error').textContent=show||t?tm:'';return !pm&&!lm&&!tm}
-function getDraft(){const l=+fields.liters.value,p=+fields.price.value;return{id:loadedRecordId||crypto.randomUUID(),nomor_struk:fields.number.value.trim(),tanggal:fields.date.value?new Date(fields.date.value).toISOString():'',operator:fields.operator.value.trim(),nama_spbu:fields.store.value.trim(),kode_struk:fields.code.value.trim(),lokasi:fields.location.value.trim(),shift:fields.shift.value.trim(),pulau_pompa:fields.pump.value.trim(),nomor_kendaraan:fields.vehicle.value.trim().toUpperCase(),jenis_bbm:selectedFuel(),jumlah_liter:+l.toFixed(3),harga_per_liter:p,harga_non_subsidi:+fields.nonSubsidy.value||0,total:Math.round(l*p),metode_pembayaran:fields.payment.value,catatan:fields.notes.value.trim()}}
-function validateDraft(d){if(!validateNumeric(true))return'Perbaiki nilai transaksi terlebih dahulu.';if(!d.nomor_struk||!d.tanggal||!d.operator||!d.nama_spbu||!d.nomor_kendaraan||!d.jenis_bbm)return'Lengkapi semua field wajib sebelum melanjutkan.';return''}
-"""function updateCalculation(){
-const p=Number(fields.price.value||0);
-const l=Number(fields.liters.value||0);
-const total=Math.round(l*p);
-if(fields.mode.value==='total' && p>0 && fields.paymentTotal.value){fields.liters.value=(Number(fields.paymentTotal.value)/p).toFixed(3)}
-if(fields.mode.value==='liter' && p>0 && l>0){fields.paymentTotal.value=total}
-updatePreview();
-validateNumeric(false)
+const $ = (id) => document.getElementById(id);
+const fields = {
+  number: $('receipt-number'),
+  date: $('transaction-date'),
+  operator: $('operator'),
+  store: $('store-name'),
+  code: $('receipt-code'),
+  location: $('location'),
+  shift: $('shift'),
+  pump: $('pump-number'),
+  vehicle: $('vehicle-number'),
+  fuel: $('fuel-type'),
+  customFuel: $('custom-fuel'),
+  mode: $('calculation-mode'),
+  liters: $('liters'),
+  price: $('price'),
+  nonSubsidy: $('non-subsidy-price'),
+  paymentTotal: $('payment-total'),
+  payment: $('payment-method'),
+  notes: $('notes'),
+  paper: $('paper-width')
+};
+
+let records = [], loadedRecordId = null, printerConnection = { type: null, device: null, usbEndpoint: null };
+const KEY = 'struk_bbm_records_v1';
+const DEFAULT_NON_SUBSIDY_PRICE = 15892;
+
+const rupiah = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Math.round(Number(v) || 0));
+const literText = (v) => Number(v || 0).toLocaleString('id-ID', { maximumFractionDigits: 3 });
+const localDate = (iso) => iso ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso)) : '-';
+const dateInputValue = (d = new Date()) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+const newNumber = () => {
+  const d = new Date();
+  return `BBM-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${String(d.getTime()).slice(-5)}`;
+};
+const selectedFuel = () => fields.fuel.value === 'Lainnya' ? fields.customFuel.value.trim() : fields.fuel.value;
+const saveDB = () => localStorage.setItem(KEY, JSON.stringify(records));
+
+function notify(message, type = 'success') {
+  const e = $('notice');
+  const c = {
+    success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+    error: 'border-red-200 bg-red-50 text-red-800',
+    info: 'border-cyan-200 bg-cyan-50 text-cyan-800'
+  };
+  e.className = `mb-5 rounded-xl border px-4 py-3 text-sm ${c[type] || c.info}`;
+  e.textContent = message;
+  e.classList.remove('hidden');
+  clearTimeout(notify.t);
+  notify.t = setTimeout(() => e.classList.add('hidden'), 5000);
 }
-function updatePreview"""(r=getDraft()){const total=Math.round((+r.jumlah_liter||0)*(+r.harga_per_liter||0));const totalNormal=Math.round((+r.jumlah_liter||0)*(+r.harga_non_subsidi||0));const subsidi=Math.max(0,totalNormal-total);$('calculation-detail').textContent=`${literText(r.jumlah_liter)} L × ${rupiah(r.harga_per_liter)}`;$('form-total').textContent=rupiah(total);const m={'preview-store':r.nama_spbu||'-','preview-code':r.kode_struk||'-','preview-location':r.lokasi||'-','preview-shift':r.shift||'-','preview-pump':r.pulau_pompa||'-','preview-number':r.nomor_struk||'-','preview-date':localDate(r.tanggal),'preview-operator':r.operator||'-','preview-vehicle':r.nomor_kendaraan||'-','preview-payment':r.metode_pembayaran||'-','preview-fuel':r.jenis_bbm||'-','preview-fuel-price':rupiah(r.harga_per_liter),'preview-liter':`${literText(r.jumlah_liter)} L`,'preview-subtotal':rupiah(total),'preview-total':rupiah(total),'preview-non-subsidi':rupiah(r.harga_non_subsidi),'preview-subsidi':rupiah((+r.harga_non_subsidi||0)-(+r.harga_per_liter||0)),'preview-jual':rupiah(r.harga_per_liter),'preview-tanpa-subsidi':rupiah(totalNormal),'preview-total-subsidi':rupiah(subsidi),'preview-total-paid':rupiah(total),'preview-subsidy-note':rupiah(subsidi),'preview-notes':r.catatan||''};Object.entries(m).forEach(([i,v])=>$(i).textContent=v);$('preview-notes-wrap').classList.toggle('hidden',!r.catatan);$('receipt-preview').classList.toggle('paper-58',fields.paper.value==='58')}
-function toggleMode(){const total=fields.mode.value==='total';fields.liters.readOnly=total;fields.paymentTotal.readOnly=!total;fields.liters.classList.toggle('bg-slate-100',total);fields.paymentTotal.classList.toggle('bg-slate-100',!total);updateCalculation()}
-function resetForm(){loadedRecordId=null;fields.number.value='3443216';fields.date.value=dateInputValue();fields.operator.value='';fields.store.value='';fields.code.value='';fields.location.value='';fields.shift.value='';fields.pump.value='';fields.vehicle.value='';fields.fuel.value='Pertalite';fields.customFuel.value='';fields.mode.value='total';fields.liters.value='';fields.price.value='';fields.paymentTotal.value='';fields.payment.value='Tunai';fields.notes.value='';fields.paper.value='80';$('custom-fuel-wrap').classList.add('hidden');toggleMode();updatePreview()}
-function loadRecord(r){loadedRecordId=r.id;fields.number.value=r.nomor_struk;fields.date.value=dateInputValue(new Date(r.tanggal));fields.operator.value=r.operator;fields.store.value=r.nama_spbu;fields.vehicle.value=r.nomor_kendaraan;const exists=[...fields.fuel.options].some(o=>o.value===r.jenis_bbm);fields.fuel.value=exists?r.jenis_bbm:'Lainnya';fields.customFuel.value=exists?'':r.jenis_bbm;$('custom-fuel-wrap').classList.toggle('hidden',exists);fields.mode.value='liter';fields.liters.value=r.jumlah_liter;fields.price.value=r.harga_per_liter;fields.paymentTotal.value=r.total;fields.payment.value=r.metode_pembayaran;fields.notes.value=r.catatan;toggleMode();updatePreview(r)}
-function showTab(t){const tx=t==='transaction';$('transaction-view').classList.toggle('hidden',!tx);$('history-view').classList.toggle('hidden',tx);$('tab-transaksi').classList.toggle('active',tx);$('tab-riwayat').classList.toggle('active',!tx)}
-function renderHistory(){const q=$('history-search').value.trim().toLowerCase(),m=records.filter(r=>[r.nomor_struk,r.tanggal,r.nomor_kendaraan,r.jenis_bbm].join(' ').toLowerCase().includes(q)),b=$('history-body');b.innerHTML='';m.forEach(r=>{const tr=document.createElement('tr');tr.className='history-row border-t';tr.innerHTML=`<td class="px-4 py-3"><p class="font-bold">${r.nomor_struk}</p><p class="mt-0.5 text-xs text-slate-500">${localDate(r.tanggal)}</p></td><td class="px-4 py-3 font-semibold">${r.nomor_kendaraan}</td><td class="px-4 py-3"><p>${r.jenis_bbm}</p><p class="mt-0.5 text-xs text-slate-500">${literText(r.jumlah_liter)} L × ${rupiah(r.harga_per_liter)}</p></td><td class="px-4 py-3 text-right font-bold">${rupiah(r.total)}</td><td class="px-4 py-3"><div class="flex justify-end gap-2"><button class="view rounded-md border px-2.5 py-1.5 text-xs font-bold">Lihat</button><button class="print rounded-md border border-cyan-700 px-2.5 py-1.5 text-xs font-bold text-cyan-800">Cetak</button><button class="del rounded-md border border-red-200 px-2.5 py-1.5 text-xs font-bold text-red-700">Hapus</button></div></td>`;tr.querySelector('.view').onclick=()=>{loadRecord(r);showTab('transaction');notify('Struk dimuat dari riwayat.','info')};tr.querySelector('.print').onclick=()=>{loadRecord(r);showTab('transaction');printReceipt()};tr.querySelector('.del').onclick=()=>{if(confirm('Hapus struk ini?')){records=records.filter(x=>x.id!==r.id);saveDB();renderHistory();setSync(`${records.length} struk tersimpan`);notify('Struk berhasil dihapus.')}};b.appendChild(tr)});$('history-empty').classList.toggle('hidden',m.length>0);$('history-count').textContent=`${m.length} dari ${records.length} struk ditampilkan`}
-async function saveReceipt(e){e.preventDefault();const d=getDraft(),err=validateDraft(d);if(err)return notify(err,'error');const i=records.findIndex(x=>x.id===d.id);if(i>=0)records[i]=d;else records.unshift(d);saveDB();loadedRecordId=d.id;renderHistory();setSync(`${records.length} struk tersimpan`);notify(i>=0?'Perubahan struk berhasil disimpan.':'Struk berhasil disimpan ke riwayat.')}
-function applyPrintLayout(){const w=fields.paper.value==='58'?'58mm':'80mm';const p=fields.paper.value==='58'?'2mm':'3mm';const s=document.createElement('style');s.id='dynamic-print';s.textContent=`@page{size:${w} auto;margin:0}#receipt-print{width:${w}!important;padding:${p}!important}`;document.getElementById('dynamic-print')?.remove();document.head.appendChild(s);$('receipt-print').className=`receipt-paper ${fields.paper.value==='58'?'paper-58':''} text-xs leading-relaxed`;$('receipt-print').innerHTML=$('receipt-preview').innerHTML}
-function browserPrint(){applyPrintLayout();window.print()}
-function receiptText(d){return `${d.nama_spbu}\nSTRUK PEMBELIAN BBM\n--------------------------------\nNo. ${d.nomor_struk}\n${localDate(d.tanggal)}\nOperator: ${d.operator}\nKendaraan: ${d.nomor_kendaraan}\nBayar: ${d.metode_pembayaran}\n--------------------------------\n${d.jenis_bbm}\n${literText(d.jumlah_liter)} L x ${rupiah(d.harga_per_liter)}\nTOTAL: ${rupiah(d.total)}\n${d.catatan?`Catatan: ${d.catatan}\n`:''}--------------------------------\nTERIMA KASIH\n\n\n`}
-async function connectPrinter(){try{if(!('serial'in navigator)){return notify('Browser belum mendukung Web Serial. Gunakan Chrome/Edge atau gunakan tombol cetak browser.','info')}const port=await navigator.serial.requestPort();await port.open({baudRate:9600});printerConnection={type:'serial',device:port};$('printer-status').textContent='Printer terhubung';$('connect-button').classList.add('hidden');$('disconnect-button').classList.remove('hidden');notify('Printer berhasil terhubung.','success')}catch(e){notify('Koneksi printer gagal atau dibatalkan.','error')}}
-async function disconnectPrinter(){try{if(printerConnection.device)await printerConnection.device.close()}catch(e){}printerConnection={type:null,device:null};$('printer-status').textContent='Printer belum terhubung';$('connect-button').classList.remove('hidden');$('disconnect-button').classList.add('hidden')}
-async function printReceipt(){const d=getDraft(),err=validateDraft(d);if(err)return notify(err,'error');updatePreview(d);if(!printerConnection.type)return browserPrint();try{const enc=new TextEncoder(),data=enc.encode('\x1B\x40'+receiptText(d)+'\x1D\x56\x00'),w=printerConnection.device.writable.getWriter();await w.write(data);w.releaseLock();notify('Struk berhasil dikirim ke printer thermal.','success')}catch(e){notify('Cetak langsung gagal, dialihkan ke dialog print.','info');browserPrint()}}
-document.addEventListener('DOMContentLoaded',()=>{lucide.createIcons();try{records=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){records=[]}setSync(`${records.length} struk tersimpan`);resetForm();renderHistory();
-$('tab-transaksi').onclick=()=>showTab('transaction');$('tab-riwayat').onclick=()=>showTab('history');$('receipt-form').onsubmit=saveReceipt;$('new-receipt-button').onclick=()=>{resetForm();notify('Form transaksi baru siap digunakan.','info')};$('print-button').onclick=printReceipt;$('connect-button').onclick=connectPrinter;$('disconnect-button').onclick=disconnectPrinter;$('history-search').oninput=renderHistory;
-fields.mode.onchange=toggleMode;fields.fuel.onchange=()=>{$('custom-fuel-wrap').classList.toggle('hidden',fields.fuel.value!=='Lainnya');updatePreview()};[fields.liters,fields.price,fields.nonSubsidy,fields.paymentTotal].forEach(x=>x.oninput=updateCalculation);[fields.number,fields.date,fields.operator,fields.store,fields.code,fields.location,fields.shift,fields.pump,fields.nonSubsidy,fields.customFuel,fields.payment,fields.notes,fields.paper].forEach(x=>x.oninput=updatePreview);fields.paper.onchange=updatePreview;fields.vehicle.oninput=()=>{fields.vehicle.value=fields.vehicle.value.toUpperCase();updatePreview()}})
+
+function setSync(text, color = 'bg-emerald-400') {
+  $('sync-status').textContent = text;
+  $('sync-dot').className = `h-2 w-2 rounded-full ${color}`;
+}
+
+function validateNumeric(show) {
+  const p = Number(fields.price.value || 0);
+  const l = Number(fields.liters.value || 0);
+  const t = Number(fields.paymentTotal.value || 0);
+
+  const pm = p > 0 ? '' : 'Harga per liter harus lebih besar dari nol.';
+  const lm = fields.mode.value === 'liter' && !(l > 0) ? 'Jumlah liter harus lebih besar dari nol.' : '';
+  const tm = fields.mode.value === 'total' && !(t > 0) ? 'Total pembayaran harus lebih besar dari nol.' : '';
+
+  $('price-error').textContent = show || p ? pm : '';
+  $('liters-error').textContent = show || l ? lm : '';
+  $('total-error').textContent = show || t ? tm : '';
+
+  return !pm && !lm && !tm;
+}
+
+function getDraft() {
+  const liters = Number(fields.liters.value || 0);
+  const price = Number(fields.price.value || 0);
+  const paymentTotal = Number(fields.paymentTotal.value || 0);
+  const total = Math.round(fields.mode.value === 'total' ? paymentTotal : liters * price);
+
+  return {
+    id: loadedRecordId || crypto.randomUUID(),
+    nomor_struk: fields.number.value.trim(),
+    tanggal: fields.date.value ? new Date(fields.date.value).toISOString() : '',
+    operator: fields.operator.value.trim(),
+    nama_spbu: fields.store.value.trim(),
+    kode_struk: fields.code.value.trim(),
+    lokasi: fields.location.value.trim(),
+    shift: fields.shift.value.trim(),
+    pulau_pompa: fields.pump.value.trim(),
+    nomor_kendaraan: fields.vehicle.value.trim().toUpperCase(),
+    jenis_bbm: selectedFuel(),
+    jumlah_liter: Number(liters.toFixed(3)),
+    harga_per_liter: price,
+    harga_non_subsidi: Number(fields.nonSubsidy.value || 0),
+    total,
+    metode_pembayaran: fields.payment.value,
+    catatan: fields.notes.value.trim()
+  };
+}
+
+function validateDraft(d) {
+  if (!validateNumeric(true)) return 'Perbaiki nilai transaksi terlebih dahulu.';
+  if (!d.nomor_struk || !d.tanggal || !d.operator || !d.nama_spbu || !d.nomor_kendaraan || !d.jenis_bbm) {
+    return 'Lengkapi semua field wajib sebelum melanjutkan.';
+  }
+  return '';
+}
+
+function updateCalculation() {
+  const p = Number(fields.price.value || 0);
+  const l = Number(fields.liters.value || 0);
+  const t = Number(fields.paymentTotal.value || 0);
+
+  if (fields.mode.value === 'total') {
+    fields.liters.value = p > 0 && t > 0 ? (t / p).toFixed(3) : '';
+  }
+
+  if (fields.mode.value === 'liter') {
+    fields.paymentTotal.value = p > 0 && l > 0 ? String(Math.round(l * p)) : '';
+  }
+
+  updatePreview();
+  validateNumeric(false);
+}
+
+function updatePreview(r = getDraft()) {
+  const liters = Number(r.jumlah_liter) || 0;
+  const nonSubsidyPrice = Number(r.harga_non_subsidi) || 0;
+  const total = Number(r.total) || 0;
+  const totalNormal = Math.round(liters * nonSubsidyPrice);
+  const subsidiPerLiter = Math.max(0, nonSubsidyPrice - (Number(r.harga_per_liter) || 0));
+  const subsidi = Math.max(0, totalNormal - total);
+
+  $('calculation-detail').textContent = `${literText(r.jumlah_liter)} L x ${rupiah(r.harga_per_liter)}`;
+  if ($('form-total')) $('form-total').textContent = rupiah(total);
+  $('calculation-normal').textContent = `${literText(liters)} L x ${rupiah(nonSubsidyPrice)} = ${rupiah(totalNormal)}`;
+  $('calculation-subsidy').textContent = `${rupiah(totalNormal)} - ${rupiah(total)} = ${rupiah(subsidi)}`;
+
+  const map = {
+    'preview-code': r.kode_struk || '-',
+    'preview-store': r.nama_spbu || '-',
+    'preview-location': r.lokasi || '-',
+    'preview-shift': r.shift || '-',
+    'preview-trans': r.nomor_struk || '-',
+    'preview-number': r.nomor_struk || '-',
+    'preview-date': localDate(r.tanggal),
+    'preview-operator': r.operator || '-',
+    'preview-pump': r.pulau_pompa || '-',
+    'preview-fuel': r.jenis_bbm || '-',
+    'preview-liter': `${literText(r.jumlah_liter)} L`,
+    'preview-non-subsidi': rupiah(r.harga_non_subsidi || 0),
+    'preview-subsidi': rupiah(subsidiPerLiter),
+    'preview-jual': rupiah(r.harga_per_liter || 0),
+    'preview-vehicle': r.nomor_kendaraan || '-',
+    'preview-total': rupiah(total),
+    'preview-tanpa-subsidi': rupiah(totalNormal),
+    'preview-total-subsidi': rupiah(subsidi),
+    'preview-total-paid': rupiah(total),
+    'preview-subsidy-note': Number(subsidi || 0).toLocaleString('id-ID')
+  };
+
+  Object.entries(map).forEach(([id, value]) => {
+    const el = $(id);
+    if (el) el.textContent = value;
+  });
+
+  if ($('receipt-preview')) {
+    $('receipt-preview').classList.toggle('paper-58', fields.paper.value === '58');
+  }
+}
+
+function toggleMode() {
+  const totalMode = fields.mode.value === 'total';
+  fields.liters.readOnly = totalMode;
+  fields.paymentTotal.readOnly = !totalMode;
+  fields.liters.classList.toggle('bg-slate-100', totalMode);
+  fields.paymentTotal.classList.toggle('bg-slate-100', !totalMode);
+  updateCalculation();
+}
+
+function resetForm() {
+  loadedRecordId = null;
+  fields.number.value = newNumber();
+  fields.date.value = dateInputValue();
+  fields.operator.value = '';
+  fields.store.value = '';
+  fields.code.value = '';
+  fields.location.value = '';
+  fields.shift.value = '';
+  fields.pump.value = '';
+  fields.vehicle.value = '';
+  fields.fuel.value = 'Pertalite';
+  fields.customFuel.value = '';
+  fields.nonSubsidy.value = String(DEFAULT_NON_SUBSIDY_PRICE);
+  fields.mode.value = 'total';
+  fields.liters.value = '';
+  fields.price.value = '';
+  fields.paymentTotal.value = '';
+  fields.payment.value = 'Tunai';
+  fields.notes.value = '';
+  fields.paper.value = '80';
+
+  const custom = $('custom-fuel-wrap');
+  if (custom) custom.classList.add('hidden');
+
+  toggleMode();
+  updatePreview();
+}
+
+function loadRecord(r) {
+  loadedRecordId = r.id;
+  fields.number.value = r.nomor_struk;
+  fields.date.value = r.tanggal ? dateInputValue(new Date(r.tanggal)) : dateInputValue();
+  fields.operator.value = r.operator || '';
+  fields.store.value = r.nama_spbu || '';
+  fields.vehicle.value = r.nomor_kendaraan || '';
+  fields.code.value = r.kode_struk || '';
+  fields.location.value = r.lokasi || '';
+  fields.shift.value = r.shift || '';
+  fields.pump.value = r.pulau_pompa || '';
+  fields.notes.value = r.catatan || '';
+
+  const exists = [...fields.fuel.options].some((o) => o.value === r.jenis_bbm);
+  fields.fuel.value = exists ? r.jenis_bbm : 'Lainnya';
+  fields.customFuel.value = exists ? '' : (r.jenis_bbm || '');
+  const custom = $('custom-fuel-wrap');
+  if (custom) custom.classList.toggle('hidden', exists);
+
+  fields.mode.value = 'liter';
+  fields.liters.value = String(r.jumlah_liter || 0);
+  fields.price.value = String(r.harga_per_liter || 0);
+  fields.paymentTotal.value = String(r.total || 0);
+  fields.nonSubsidy.value = String(r.harga_non_subsidi ?? 0);
+  fields.payment.value = r.metode_pembayaran || 'Tunai';
+  fields.paper.value = '80';
+
+  toggleMode();
+  updatePreview(r);
+}
+
+function showTab(tabName) {
+  const transaction = tabName === 'transaction';
+  $('transaction-view').classList.toggle('hidden', !transaction);
+  $('history-view').classList.toggle('hidden', transaction);
+  $('tab-transaksi').classList.toggle('active', transaction);
+  $('tab-riwayat').classList.toggle('active', !transaction);
+}
+
+function renderHistory() {
+  const q = ($('history-search')?.value || '').trim().toLowerCase();
+  const matches = records.filter((r) => [r.nomor_struk, r.tanggal, r.nomor_kendaraan, r.jenis_bbm].join(' ').toLowerCase().includes(q));
+  const body = $('history-body');
+  body.innerHTML = '';
+
+  matches.forEach((r) => {
+    const tr = document.createElement('tr');
+    tr.className = 'history-row border-t';
+    tr.innerHTML = `
+      <td class="px-4 py-3">
+        <p class="font-bold">${r.nomor_struk}</p>
+        <p class="mt-0.5 text-xs text-slate-500">${localDate(r.tanggal)}</p>
+      </td>
+      <td class="px-4 py-3 font-semibold">${r.nomor_kendaraan}</td>
+      <td class="px-4 py-3">
+        <p>${r.jenis_bbm}</p>
+        <p class="mt-0.5 text-xs text-slate-500">${literText(r.jumlah_liter)} L ? ${rupiah(r.harga_per_liter)}</p>
+      </td>
+      <td class="px-4 py-3 text-right font-bold">${rupiah(r.total)}</td>
+      <td class="px-4 py-3">
+        <div class="flex justify-end gap-2">
+          <button class="view rounded-md border px-2.5 py-1.5 text-xs font-bold" type="button">Lihat</button>
+          <button class="print rounded-md border border-cyan-700 px-2.5 py-1.5 text-xs font-bold text-cyan-800" type="button">Cetak</button>
+          <button class="del rounded-md border border-red-200 px-2.5 py-1.5 text-xs font-bold text-red-700" type="button">Hapus</button>
+        </div>
+      </td>`;
+
+    tr.querySelector('.view').onclick = () => {
+      loadRecord(r);
+      showTab('transaction');
+      notify('Struk dimuat dari riwayat.', 'info');
+    };
+
+    tr.querySelector('.print').onclick = () => {
+      loadRecord(r);
+      showTab('transaction');
+      printReceipt();
+    };
+
+    tr.querySelector('.del').onclick = () => {
+      if (confirm('Hapus struk ini?')) {
+        records = records.filter((x) => x.id !== r.id);
+        saveDB();
+        renderHistory();
+        setSync(`${records.length} struk tersimpan`);
+        notify('Struk berhasil dihapus.');
+      }
+    };
+
+    body.appendChild(tr);
+  });
+
+  $('history-empty').classList.toggle('hidden', matches.length > 0);
+  $('history-count').textContent = `${matches.length} dari ${records.length} struk ditampilkan`;
+}
+
+async function saveReceipt(e) {
+  e.preventDefault();
+  const d = getDraft();
+  const err = validateDraft(d);
+  if (err) return notify(err, 'error');
+
+  const idx = records.findIndex((x) => x.id === d.id);
+  if (idx >= 0) records[idx] = d;
+  else records.unshift(d);
+
+  saveDB();
+  loadedRecordId = d.id;
+  renderHistory();
+  setSync(`${records.length} struk tersimpan`);
+  notify(idx >= 0 ? 'Perubahan struk berhasil disimpan.' : 'Struk berhasil disimpan ke riwayat.');
+}
+
+function applyPrintLayout() {
+  const width = fields.paper.value === '58' ? '58mm' : '80mm';
+  const padding = fields.paper.value === '58' ? '2mm' : '3mm';
+  const style = document.createElement('style');
+  style.id = 'dynamic-print';
+  style.textContent = `@page{size:${width} auto;margin:0}#receipt-print{width:${width}!important;padding:${padding}!important}`;
+  const prev = document.getElementById('dynamic-print');
+  if (prev) prev.remove();
+  document.head.appendChild(style);
+
+  const printArea = $('receipt-print');
+  printArea.className = `receipt-paper ${fields.paper.value === '58' ? 'paper-58' : ''} text-xs leading-relaxed`;
+  printArea.innerHTML = $('receipt-preview').innerHTML;
+}
+
+function browserPrint() {
+  applyPrintLayout();
+  window.print();
+}
+
+function receiptText(d) {
+  return `${d.nama_spbu}
+STRUK PEMBELIAN BBM
+--------------------------------
+No. ${d.nomor_struk}
+${localDate(d.tanggal)}
+Operator: ${d.operator}
+Kendaraan: ${d.nomor_kendaraan}
+Bayar: ${d.metode_pembayaran}
+--------------------------------
+${d.jenis_bbm}
+${literText(d.jumlah_liter)} L x ${rupiah(d.harga_per_liter)}
+TOTAL: ${rupiah(d.total)}
+${d.catatan ? `Catatan: ${d.catatan}
+` : ''}--------------------------------
+TERIMA KASIH
+
+
+`;
+}
+
+async function connectPrinter() {
+  try {
+    if (!('serial' in navigator)) {
+      return notify('Browser belum mendukung Web Serial. Gunakan Chrome/Edge atau gunakan tombol cetak browser.', 'info');
+    }
+
+    const port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 9600 });
+    printerConnection = { type: 'serial', device: port };
+    $('printer-status').textContent = 'Printer terhubung';
+    $('connect-button').classList.add('hidden');
+    $('disconnect-button').classList.remove('hidden');
+    notify('Printer berhasil terhubung.', 'success');
+  } catch (e) {
+    notify('Koneksi printer gagal atau dibatalkan.', 'error');
+  }
+}
+
+async function disconnectPrinter() {
+  try {
+    if (printerConnection.device) await printerConnection.device.close();
+  } catch (e) {}
+
+  printerConnection = { type: null, device: null };
+  $('printer-status').textContent = 'Printer belum terhubung';
+  $('connect-button').classList.remove('hidden');
+  $('disconnect-button').classList.add('hidden');
+}
+
+async function printReceipt() {
+  const d = getDraft();
+  const err = validateDraft(d);
+  if (err) return notify(err, 'error');
+
+  updatePreview(d);
+
+  if (!printerConnection.type) return browserPrint();
+
+  try {
+    const enc = new TextEncoder();
+    const data = enc.encode('@' + receiptText(d) + 'V ');
+    const writer = printerConnection.device.writable.getWriter();
+    await writer.write(data);
+    writer.releaseLock();
+    notify('Struk berhasil dikirim ke printer thermal.', 'success');
+  } catch (e) {
+    notify('Cetak langsung gagal, dialihkan ke dialog print.', 'info');
+    browserPrint();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+
+  try {
+    records = JSON.parse(localStorage.getItem(KEY) || '[]');
+  } catch (e) {
+    records = [];
+  }
+
+  setSync(`${records.length} struk tersimpan`);
+  resetForm();
+  renderHistory();
+
+  $('tab-transaksi').onclick = () => showTab('transaction');
+  $('tab-riwayat').onclick = () => showTab('history');
+  $('receipt-form').onsubmit = saveReceipt;
+  $('new-receipt-button').onclick = () => {
+    resetForm();
+    notify('Form transaksi baru siap digunakan.', 'info');
+  };
+  $('print-button').onclick = printReceipt;
+  $('connect-button').onclick = connectPrinter;
+  $('disconnect-button').onclick = disconnectPrinter;
+  $('history-search').oninput = renderHistory;
+
+  fields.mode.onchange = toggleMode;
+  fields.fuel.onchange = () => {
+    const custom = $('custom-fuel-wrap');
+    if (custom) custom.classList.toggle('hidden', fields.fuel.value !== 'Lainnya');
+    updatePreview();
+  };
+
+  [fields.liters, fields.price, fields.nonSubsidy, fields.paymentTotal].forEach((x) => {
+    x.oninput = updateCalculation;
+  });
+
+  [fields.number, fields.date, fields.operator, fields.store, fields.code, fields.location, fields.shift, fields.pump, fields.nonSubsidy, fields.customFuel, fields.payment, fields.notes, fields.paper].forEach((x) => {
+    x.oninput = updatePreview;
+  });
+
+  fields.vehicle.oninput = () => {
+    fields.vehicle.value = fields.vehicle.value.toUpperCase();
+    updatePreview();
+  };
+
+  fields.paper.onchange = updatePreview;
+});
 </script>
 </body>
 </html>
