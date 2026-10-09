@@ -3,630 +3,1274 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Struk BBM</title>
+<title>Struk BBM Dan Konter</title>
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.577.0/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
-:root{--ink:#102a43;--muted:#627d98;--paper:#fffdf8;--navy:#0b1f33;--blue:#0077b6;--teal:#0f766e}
-*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:var(--ink);background:#eef4f8}
-.topbar{background:var(--navy)}.form-panel{box-shadow:0 18px 45px rgba(16,42,67,.09)}
-.receipt-wrap{background:repeating-linear-gradient(45deg,#e9eff4 0 1px,transparent 1px 9px)}
-.receipt-paper{width:min(100%,80mm);background:var(--paper);color:#151515;font-family:"Courier New",monospace;box-shadow:0 14px 28px rgba(16,42,67,.18);position:relative}
-.receipt-paper.text-xs{font-size:10px;line-height:1.35}
-.receipt-paper .text-lg{font-size:14px}
-.receipt-paper.px-4.py-6{padding:4px 8px}
-.receipt-paper .my-4{margin-top:3px;margin-bottom:3px}
-.receipt-paper .receipt-logo{width:40%;max-width:80px;max-height:42px;margin-bottom:4px}
-.receipt-paper .receipt-note{line-height:1.05}
-.receipt-paper.paper-58{width:min(100%,58mm)}
-.receipt-line{border-top:1px dashed #3f3f3f}.tab-button{border-bottom:3px solid transparent}
-.tab-button.active{color:var(--blue);border-color:var(--blue)}
-.field:focus{outline:3px solid rgba(0,119,182,.18);border-color:var(--blue)}
-.history-row:hover{background:#f5f9fc}.print-only{display:none}
-.manual-input{font-size:12px;margin-top:8px}.manual-input input{width:100%;padding:6px;border:1px solid #ddd;margin-bottom:5px}.receipt-logo{display:block;max-width:112px;width:52%;height:auto;max-height:68px;object-fit:contain;margin:0 auto 10px}
-.header-logo{display:block;width:112px;height:42px;object-fit:contain;flex:none}
-@media print{
- html,body{background:#fff!important;margin:0!important;padding:0!important}
- .no-print{display:none!important}.print-only{display:block!important}
- #receipt-print{display:block!important;margin:0!important;box-shadow:none!important}
+:root{--ink:#102a43;--paper:#ffffff;--navy:#0b1f33;--blue:#0077b6;--red:#b91c1c;--red-dark:#7f1d1d;--red-soft:#fee2e2;--red-mid:#dc2626}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;color:var(--ink);background:linear-gradient(180deg,#f8f5f2 0%,#eef2f7 100%)}
+.topbar{background:linear-gradient(135deg,var(--red-dark),var(--red));box-shadow:0 8px 22px rgba(127,29,29,.18)}
+.receipt-wrap{background:repeating-linear-gradient(45deg,#f4e7e7 0 1px,transparent 1px 9px)}
+
+/* Preview Struk - Paksa Hitam Pekat & Bebas Error */
+.receipt-paper{
+  width: min(100%, 58mm);
+  min-height: 4in; /* Tinggi 4 inci */
+  background: #ffffff !important;
+  color: #000000 !important;
+  font-family: "Courier New", Courier, monospace !important;
+  font-weight: 700 !important;
+  box-shadow: 0 10px 20px rgba(0,0,0,.15);
+  position: relative;
+  font-size: 11px;
+  line-height: 1.2;
+  padding: 8px;
+  border: 1px solid rgba(0,0,0,.1);
 }
-@page{size:80mm auto;margin:0}
+
+/* Memaksa SEMUA teks di dalam preview struk berwarna hitam murni */
+#receipt-preview, 
+#receipt-preview *, 
+#receipt-preview .font-bold, 
+#prev-fuel, 
+#prev-total, 
+#prev-store {
+  color: #000000 !important;
+}
+#receipt-preview #prev-store {
+  font-size: 14px !important;
+  line-height: 1.15 !important;
+  overflow-wrap: anywhere;
+}
+
+.receipt-line{border-top:1.5px dashed #000000 !important;margin:4px 0}
+.receipt-logo{display:block;max-width:80px;height:auto;margin:0 auto 4px;object-fit:contain;filter: grayscale(100%) contrast(200%);}
+.tab-button{border-bottom:3px solid transparent;transition:all .2s ease}
+.tab-button.active{color:var(--red);border-color:var(--red)}
+.compact-confirm-popup{width:min(300px,calc(100vw - 32px))!important;padding:12px!important;border-radius:8px!important}
+.compact-confirm-popup .swal2-icon{width:40px!important;height:40px!important;margin:0 auto 9px!important}
+.compact-confirm-popup .swal2-icon .swal2-icon-content{font-size:30px!important}
+.compact-confirm-popup .swal2-title{margin:0 0 6px!important;font-size:18px!important}
+.compact-confirm-popup .swal2-html-container{margin:0!important;font-size:13px!important}
+.compact-confirm-popup .swal2-actions{gap:6px!important;margin:10px auto 0!important}
+.compact-confirm-popup .swal2-styled{margin:0!important;padding:7px 11px!important;font-size:12px!important}
+#save-button{background:linear-gradient(135deg,var(--red-mid),var(--red-dark));box-shadow:0 8px 16px rgba(185,28,28,.25)}
+#save-button:hover{filter:brightness(1.04)}
+#btn-rawbt{background:linear-gradient(135deg,#dc2626,#991b1b)}
+#btn-excel{background:linear-gradient(135deg,#8b1e3f,#6b1d45)}
+
+/* ATURAN CETAK PRINTER THERMAL 58mm */
+@page {
+  margin: 0;
+}
+
+@media print {
+  html, body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 58mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+  body > .app-shell {
+    width: 58mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .app-shell > :not(.print-only) { display: none !important; }
+  .print-only {
+    display: block !important;
+    position: static !important;
+    width: 58mm !important;
+  }
+  
+  #receipt-print {
+    display: block !important;
+    width: 58mm !important;
+    max-width: 58mm !important;
+    min-width: 58mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0 2mm 0 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    font-family: "Courier New", Courier, monospace !important;
+    font-size: 11.5px !important;
+    font-weight: 800 !important;
+    color: #000000 !important;
+    line-height: 1.2 !important;
+    white-space: pre !important;
+    background: #ffffff !important;
+  }
+  
+  #receipt-print * {
+    color: #000000 !important;
+  }
+  #receipt-print .print-receipt-logo {
+    display: block !important;
+    width: auto !important;
+    max-width: 80px !important;
+    max-height: 32px !important;
+    height: auto !important;
+    margin: 0 auto 2mm !important;
+    object-fit: contain !important;
+  }
+  #receipt-print .print-store-heading {
+    max-width: 100% !important;
+    margin: 0 auto 2mm !important;
+    color: #000000 !important;
+    font-family: "Courier New", Courier, monospace !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    line-height: 1.15 !important;
+    text-align: center !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+  #receipt-print .print-konter-heading {
+    max-width: 100% !important;
+    margin: 0 auto 2mm !important;
+    color: #000000 !important;
+    font-family: "Courier New", Courier, monospace !important;
+    font-size: 16px !important;
+    font-weight: 900 !important;
+    line-height: 1.15 !important;
+    text-align: center !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+  #receipt-print .print-batch-receipt:not(:last-child) {
+    margin-bottom: 2mm !important;
+    padding-bottom: 1mm !important;
+    border-bottom: 1px dashed #777 !important;
+    break-inside: avoid !important;
+  }
+  #receipt-print .print-receipt-text {
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #000000 !important;
+    font-family: "Courier New", Courier, monospace !important;
+    font-size: 9.4px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    white-space: pre !important;
+    width: auto !important;
+    transform: none !important;
+    -webkit-font-smoothing: antialiased !important;
+    text-rendering: geometricPrecision !important;
+  }
+  #konter-receipt-preview {
+    min-height: 0 !important;
+    font-weight: 600 !important;
+  }
+  #konter-preview-name {
+    color: #000000 !important;
+    font-size: 16px !important;
+    font-weight: 900 !important;
+    line-height: 1.15 !important;
+    text-align: center !important;
+    overflow-wrap: anywhere !important;
+  }
+}
+.print-only { display: none; }
 </style>
 </head>
 <body>
-<div class="app-shell">
-<header class="topbar no-print px-4 py-4 sm:px-8">
-<div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
-<div class="flex items-center gap-3">
-<div><h1 class="font-bold tracking-tight text-white text-[22px]">Struk BBM</h1>
-<p class="text-sm text-slate-300">Kasir thermal yang praktis</p></div></div>
-<div class="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-200">
-<span id="sync-dot" class="h-2 w-2 rounded-full bg-amber-400"></span><span id="sync-status">Menyiapkan riwayat...</span>
-</div></div></header>
+<div class="app-shell min-h-screen pb-12">
+<header class="topbar no-print px-4 py-4 text-white">
+  <div class="mx-auto flex max-w-5xl items-center justify-between">
+    <div>
+        <h1 class="font-bold text-xl">Aplikasi Pembayaran</h1>
+        <p class="text-xs text-slate-300">Konter/Pulsa dan Struk BBM</p>
+    </div>
+    <span id="sync-status" class="rounded-full bg-slate-800 px-3 py-1 text-xs text-emerald-400">Siap</span>
+  </div>
+</header>
 
-<main class="w-full"><div class="no-print mx-auto max-w-7xl px-4 py-6 sm:px-8">
-<nav class="mb-6 flex gap-7 border-b border-slate-200">
-<button id="tab-transaksi" class="tab-button active py-3 text-sm font-bold" type="button">Transaksi Baru</button>
-<button id="tab-riwayat" class="tab-button py-3 text-sm font-bold text-slate-500" type="button">Riwayat Struk</button>
-</nav>
-<div id="notice" class="mb-5 hidden rounded-xl border px-4 py-3 text-sm" role="status"></div>
+<main class="mx-auto max-w-5xl px-4 py-4">
+  <nav class="no-print mb-4 flex gap-6 border-b border-slate-200">
+    <button id="tab-transaksi" class="tab-button active py-2 font-bold text-sm">BBM / Struk BBM</button>
+    <button id="tab-riwayat" class="tab-button py-2 font-bold text-sm text-slate-500">Riwayat Transaksi BBM</button>
+    <button id="tab-konter" class="tab-button py-2 font-bold text-sm text-slate-500">Pulsa / Konter</button>
+  </nav>
 
-<section id="transaction-view">
-<div class="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,.85fr)]">
-<section class="form-panel rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
-<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
-<div><h2 class="font-bold text-[24px]">Buat struk transaksi</h2>
-<p class="mt-1 text-sm text-slate-500">Lengkapi data transaksi. Kolom bertanda wajib perlu diisi.</p></div>
-<button id="new-receipt-button" class="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold hover:bg-slate-50" type="button"><i data-lucide="file-plus-2" class="h-4 w-4"></i>Struk Baru</button>
-</div>
+  <div id="notice" class="no-print mb-4 hidden rounded-xl border px-4 py-3 text-sm"></div>
 
-<form id="receipt-form" novalidate class="space-y-5">
-<div class="grid gap-4 sm:grid-cols-2">
-<div><label class="mb-1.5 block text-sm font-bold">Nomor struk</label><input id="receipt-number" class="field w-full rounded-lg border bg-slate-50 px-3 py-2.5 text-sm"></div>
-<div><label class="mb-1.5 block text-sm font-bold">Tanggal & jam</label><input id="transaction-date" type="datetime-local" class="field w-full rounded-lg border px-3 py-2.5 text-sm"></div>
-<div><label class="mb-1.5 block text-sm font-bold">Nama operator *</label><input id="operator" required class="field w-full rounded-lg border px-3 py-2.5 text-sm"></div>
-<div><label class="mb-1.5 block text-sm font-bold">Kode Struk</label><input id="receipt-code" class="field w-full rounded-lg border px-3 py-2.5 text-sm"></div>
-<div><label class="mb-1.5 block text-sm font-bold">Lokasi SPBU</label><input id="location" class="field w-full rounded-lg border px-3 py-2.5 text-sm"></div>
-<div><label class="mb-1.5 block text-sm font-bold">Shift</label><input id="shift" class="field w-full rounded-lg border px-3 py-2.5 text-sm"></div><div><label class="mb-1.5 block text-sm font-bold">Pulau / Pompa</label><input id="pump-number" class="field w-full rounded-lg border px-3 py-2.5 text-sm"></div>
-<div><label class="mb-1.5 block text-sm font-bold">Nama SPBU / toko *</label><input id="store-name" required class="field w-full rounded-lg border px-3 py-2.5 text-sm"></div>
-<div><label class="mb-1.5 block text-sm font-bold">Nomor kendaraan *</label><input id="vehicle-number" required class="field w-full rounded-lg border px-3 py-2.5 text-sm uppercase"></div>
-<div><label class="mb-1.5 block text-sm font-bold">Jenis BBM *</label>
-<select id="fuel-type" class="field w-full rounded-lg border bg-white px-3 py-2.5 text-sm">
-<option>Pertalite</option><option>Pertamax</option><option>Solar</option><option>Dexlite</option><option>Pertamax Turbo</option><option value="Lainnya">Lainnya / Tambah jenis</option>
-</select></div>
-<div id="custom-fuel-wrap" class="hidden sm:col-span-2"><label class="mb-1.5 block text-sm font-bold">Jenis BBM tambahan *</label><input id="custom-fuel" class="field w-full rounded-lg border px-3 py-2.5 text-sm"></div>
-<div class="sm:col-span-2"><label class="mb-1.5 block text-sm font-bold">Mode perhitungan</label>
-<select id="calculation-mode" class="field w-full rounded-lg border bg-white px-3 py-2.5 text-sm"><option value="total">Hitung dari total</option><option value="liter">Hitung dari liter</option></select></div>
-<div><label class="mb-1.5 block text-sm font-bold">Jumlah liter *</label><input id="liters" type="number" min="0" step="0.001" class="field w-full rounded-lg border px-3 py-2.5 text-sm"><p id="liters-error" class="mt-1 min-h-5 text-xs text-red-700"></p></div>
-<div><label class="mb-1.5 block text-sm font-bold">Harga per liter (Rp) *</label><input id="price" type="number" min="0" step="1" class="field w-full rounded-lg border px-3 py-2.5 text-sm"><p id="price-error" class="mt-1 min-h-5 text-xs text-red-700"></p></div><div><label class="mb-1.5 block text-sm font-bold">Harga Non Subsidi (Rp/liter)</label><input id="non-subsidy-price" type="number" min="0" step="1" class="field w-full rounded-lg border px-3 py-2.5 text-sm"></div>
-<div class="sm:col-span-2"><label class="mb-1.5 block text-sm font-bold">Total pembayaran (Rp) *</label><input id="payment-total" type="number" min="0" step="1" class="field w-full rounded-lg border px-3 py-2.5 text-sm"><p id="total-error" class="mt-1 min-h-5 text-xs text-red-700"></p></div>
-<div><label class="mb-1.5 block text-sm font-bold">Metode pembayaran *</label><select id="payment-method" class="field w-full rounded-lg border bg-white px-3 py-2.5 text-sm"><option>Tunai</option><option>QRIS</option><option>Kartu Debit</option><option>Kartu Kredit</option></select></div>
-<div><label class="mb-1.5 block text-sm font-bold">Ukuran kertas thermal</label><select id="paper-width" class="field w-full rounded-lg border bg-white px-3 py-2.5 text-sm"><option value="80">80 mm — standar</option><option value="58">58 mm — ringkas</option></select></div>
-</div>
-<div><label class="mb-1.5 block text-sm font-bold">Catatan (opsional)</label><textarea id="notes" rows="2" class="field w-full resize-y rounded-lg border px-3 py-2.5 text-sm"></textarea></div>
+  <!-- VIEW TRANSAKSI -->
+  <section id="transaction-view" class="grid gap-6 lg:grid-cols-2">
+    <div class="rounded-2xl border bg-white p-4 shadow-sm sm:p-6">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="font-bold text-lg">Input Data Struk</h2>
+        <button id="btn-new" type="button" class="rounded-lg border px-3 py-1.5 text-xs font-bold hover:bg-slate-50">+ Struk Baru</button>
+      </div>
 
-<div class="rounded-xl bg-slate-900 px-4 py-4 text-white"><div class="flex items-end justify-between gap-4">
-<div><p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Perhitungan</p><p id="calculation-detail" class="mt-1 text-sm text-slate-300">0 L × Rp0</p></div>
-<div class="text-right"><p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Total</p><output id="form-total" class="mt-1 block text-2xl font-bold">Rp0</output></div>
-</div></div>
-<div class="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-4 text-sm text-slate-700">
-<p class="font-bold text-slate-900">Rincian estimasi subsidi</p>
-<p class="mt-2">Total tanpa subsidi: <span id="calculation-normal">0 L × Rp158.920 = Rp0</span></p>
-<p>Estimasi subsidi: <span id="calculation-subsidy">Rp0 − Rp0 = Rp0</span></p>
-<p class="mt-1 text-xs text-slate-500">Perkiraan dihitung dari harga non-subsidi dikurangi total yang dibayar.</p>
-</div>
+      <form id="receipt-form" class="space-y-3 text-sm">
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="block text-xs font-bold">No. Struk</label><input id="receipt-number" class="w-full rounded border p-2 text-xs"></div>
+          <div><label class="block text-xs font-bold">Tanggal & Jam</label><input id="transaction-date" type="datetime-local" class="w-full rounded border p-2 text-xs"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="block text-xs font-bold">Nama SPBU / Toko *</label><input id="store-name" required class="w-full rounded border p-2 text-xs" placeholder="Nama toko"></div>
+          <div><label class="block text-xs font-bold">Operator *</label><input id="operator" required class="w-full rounded border p-2 text-xs" placeholder="Budi"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="block text-xs font-bold">No. Kendaraan *</label><input id="vehicle-number" required class="w-full rounded border p-2 text-xs uppercase" placeholder="B 1234 ABC"></div>
+          <div><label class="block text-xs font-bold">Jenis BBM *</label>
+            <select id="fuel-type" class="w-full rounded border p-2 text-xs">
+              <option>Pertalite</option><option>Pertamax</option><option>Solar</option><option>Dexlite</option><option value="Lainnya">Lainnya</option>
+            </select>
+          </div>
+        </div>
+        <div id="custom-fuel-wrap" class="hidden"><label class="block text-xs font-bold">Nama BBM Lainnya</label><input id="custom-fuel" class="w-full rounded border p-2 text-xs"></div>
+        
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="block text-xs font-bold">Jumlah Liter</label><input id="liters" type="number" step="0.001" class="w-full rounded border p-2 text-xs"></div>
+          <div><label class="block text-xs font-bold">Harga / Liter (Rp)</label><input id="price" type="number" class="w-full rounded border p-2 text-xs"></div>
+        </div>
+        <div><label class="block text-xs font-bold">Total Bayar (Rp) *</label><input id="payment-total" type="number" class="w-full rounded border p-2 text-xs"></div>
 
-<div class="grid gap-3 sm:grid-cols-2">
-<button id="save-button" class="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 font-bold text-white hover:brightness-95" type="submit"><i data-lucide="save" class="h-5 w-5"></i>Simpan Struk</button>
-<button id="print-button" class="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-3 font-bold text-white shadow-lg hover:brightness-110" type="button"><i data-lucide="printer" class="h-5 w-5"></i>Cetak Langsung ke Printer Thermal</button>
-</div>
+        <div class="rounded-xl bg-slate-900 p-3 text-white flex justify-between items-center">
+          <span class="text-xs">Total Akhir:</span>
+          <output id="form-total" class="text-xl font-bold">Rp0</output>
+        </div>
 
-<section class="rounded-xl border bg-slate-50 px-4 py-4"><div class="flex flex-wrap items-center justify-between gap-3">
-<div><p class="text-sm font-bold">Koneksi printer</p><p id="printer-status" class="mt-0.5 text-xs text-slate-500">Printer belum terhubung</p></div>
-<div class="flex gap-2"><button id="connect-button" class="inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm font-bold" type="button"><i data-lucide="usb" class="h-4 w-4"></i>Hubungkan Printer</button>
-<button id="disconnect-button" class="hidden inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm font-bold text-red-700" type="button">Putuskan</button></div>
-</div></section>
-</form></section>
+        <!-- Tombol Aksi HP -->
+        <div class="space-y-2 pt-2">
+          <button id="save-button" type="submit" class="w-full rounded-xl bg-emerald-700 py-2.5 font-bold text-white text-sm">Simpan Ke Riwayat</button>
+          
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btn-rawbt" type="button" class="rounded-xl bg-amber-600 py-2.5 font-bold text-white text-xs flex justify-center items-center gap-1">
+              <i data-lucide="printer" class="h-4 w-4"></i> Cetak via App (RawBT)
+            </button>
+            <button id="btn-excel" type="button" class="rounded-xl bg-sky-700 py-2.5 font-bold text-white text-xs flex justify-center items-center gap-1">
+              <i data-lucide="file-spreadsheet" class="h-4 w-4"></i> Ekspor Excel
+            </button>
+          </div>
+          <button id="print-button" type="button" class="w-full rounded-xl border border-slate-300 py-2 text-xs text-slate-700 font-semibold">Cetak Browser Bawaan</button>
+        </div>
+      </form>
+    </div>
 
-<aside class="receipt-wrap flex min-h-[620px] items-start justify-center rounded-2xl border p-5 sm:p-8">
-<div id="receipt-preview" class="receipt-paper px-4 py-6 text-xs leading-relaxed">
-<div class="text-center">
-<img src="assets/logo-pertamina.png" class="receipt-logo">
-<div id="preview-code" class="text-lg">-</div>
-<div id="preview-store" class="mt-2 font-bold">-</div>
-<div id="preview-location">-</div>
-<div class="mt-1">Shift : <span id="preview-shift">-</span> &nbsp; No. Trans : <span id="preview-trans">-</span></div>
-<div>Waktu : <span id="preview-date">-</span></div>
-</div>
-<div class="receipt-line my-4"></div>
-<div class="grid grid-cols-[auto_1fr] gap-y-1">
-<span>Pulau/Pompa</span><span id="preview-pump" class="text-right">-</span>
-<span>Operator</span><span id="preview-operator" class="text-right">-</span>
-<span>Jenis BBM</span><span id="preview-fuel" class="text-right">-</span>
-<span>Volume</span><span id="preview-liter" class="text-right">-</span>
-</div>
-<div class="receipt-line my-4"></div>
-<div class="text-center">Informasi Harga BBM (Rp / liter)</div>
-<div class="grid grid-cols-2">
-<span>Harga Non Subsidi</span><span id="preview-non-subsidi" class="text-right">0</span>
-<span>Subsidi Pemerintah</span><span id="preview-subsidi" class="text-right">0</span>
-<span>Harga Jual</span><span id="preview-jual" class="text-right">0</span>
-</div>
-<div class="receipt-line my-4"></div>
-<div class="text-center">Total Penjualan (Rp)</div>
-<div class="grid grid-cols-2">
-<span>Tanpa Subsidi</span><span id="preview-tanpa-subsidi" class="text-right">0</span>
-<span>Subsidi Pemerintah</span><span id="preview-total-subsidi" class="text-right">0</span>
-<span>Dibayar Konsumen</span><span id="preview-total-paid" class="text-right">0</span>
-</div>
-<div class="receipt-line my-4"></div>
-<div class="grid grid-cols-2">
-<span>CASH</span><span id="preview-total" class="text-right">0</span>
-</div>
-<div class="receipt-line my-4"></div>
-<div>No. Plat : <span id="preview-vehicle">-</span></div>
-<div class="receipt-line my-4"></div>
-<div class="receipt-note text-center text-[10px] leading-relaxed">
-Anda mendapat subsidi dari<br>
-Pemerintah sebesar Rp <span id="preview-subsidy-note">0</span><br>
-(Perhitungan Subsidi Unauthorized<br>
-atau Estimasi). Gunakan BBM<br>
-Subsidi secara bijak.
-</div>
-</div></div></aside></div></section>
+    <!-- PREVIEW STRUK (58MM PAS 32 KARAKTER - TINGGI 4 INCI) -->
+    <aside class="receipt-wrap flex justify-center items-start rounded-2xl border p-4">
+      <div id="receipt-preview" class="receipt-paper">
+        <div class="text-center">
+          <img src="assets/logo-pertamina.png" class="receipt-logo" alt="Logo" onerror="this.style.display='none'">
+          <div id="prev-store" class="font-bold text-xs uppercase">PERTAMINI</div>
+          <div class="receipt-line"></div>
+          <div>No. Trans : <span id="prev-number">-</span></div>
+          <div>Waktu : <span id="prev-date">-</span></div>
+        </div>
+        <div class="receipt-line"></div>
+        <div class="flex justify-between"><span>Operator</span><span id="prev-operator">-</span></div>
+        <div class="flex justify-between"><span>Kendaraan</span><span id="prev-vehicle">-</span></div>
+        <div class="receipt-line"></div>
+        <div id="prev-fuel" class="font-bold uppercase">PERTALITE</div>
+        <div class="flex justify-between">
+          <span id="prev-liter">0 L</span>
+          <span>x <span id="prev-price">0</span></span>
+        </div>
+        <div class="receipt-line"></div>
+        <div class="flex justify-between font-bold text-sm">
+          <span>TOTAL:</span>
+          <span id="prev-total">Rp0</span>
+        </div>
+        <div class="receipt-line"></div>
+        <div class="text-center text-[10px] leading-tight mt-3 font-bold">
+          TERIMA KASIH<br>
+          SELAMAT JALAN
+        </div>
+      </div>
+    </aside>
+  </section>
 
-<section id="history-view" class="hidden">
-<div class="form-panel rounded-2xl border bg-white p-5 sm:p-7">
-<div class="mb-6 flex flex-wrap items-end justify-between gap-4"><div><h2 class="font-bold text-[24px]">Riwayat struk</h2><p class="mt-1 text-sm text-slate-500">Cari, lihat, cetak ulang, atau hapus struk yang pernah disimpan.</p></div>
-<div class="w-full sm:w-80"><div class="relative"><i data-lucide="search" class="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400"></i><input id="history-search" class="field w-full rounded-lg border py-2.5 pl-10 pr-3 text-sm" type="search" placeholder="Cari nomor struk, tanggal, atau kendaraan"></div></div></div>
-<p id="history-count" class="mb-4 text-sm font-semibold text-slate-500">Memuat riwayat...</p>
-<div class="overflow-x-auto rounded-xl border"><table class="w-full min-w-[830px] text-left text-sm"><thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr><th class="px-4 py-3">Nomor & waktu</th><th class="px-4 py-3">Kendaraan</th><th class="px-4 py-3">Produk</th><th class="px-4 py-3 text-right">Total</th><th class="px-4 py-3 text-right">Tindakan</th></tr></thead><tbody id="history-body"></tbody></table></div>
-<p id="history-empty" class="hidden py-10 text-center text-sm text-slate-500">Belum ada struk yang sesuai dengan pencarian.</p>
-</div></section></div>
-<div class="print-only"><div id="receipt-print" class="receipt-paper text-xs leading-relaxed"></div></div>
-</main></div>
+  <!-- VIEW RIWAYAT -->
+  <section id="history-view" class="hidden rounded-2xl border bg-white p-4">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <h2 class="font-bold text-lg">Riwayat Transaksi</h2>
+      <div class="flex items-center gap-3">
+        <span id="history-selected-count" role="status" aria-live="polite" class="text-xs text-slate-600">0 struk dipilih</span>
+        <button id="history-print-selected" type="button" disabled class="rounded border px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50">Cetak Pilihan (0)</button>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead class="border-b bg-slate-50 uppercase text-slate-500">
+          <tr><th class="p-2"><input id="history-select-all" type="checkbox" aria-label="Pilih semua struk" class="h-4 w-4 accent-red-700"></th><th class="p-2">No & Waktu</th><th class="p-2">Plat</th><th class="p-2">BBM</th><th class="p-2 text-right">Total</th><th class="p-2 text-right">Aksi</th></tr>
+        </thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="konter-view" class="hidden space-y-5 rounded-2xl border bg-white p-4">
+    <div class="flex items-center justify-between gap-3">
+      <h2 class="font-bold text-lg">Kasir Counter</h2>
+      <button id="konter-new-sale" type="button" class="rounded border px-3 py-2 text-xs font-semibold hover:bg-slate-50">Transaksi Baru</button>
+    </div>
+    <div class="grid gap-6 lg:grid-cols-2">
+      <div>
+        <div class="mb-3">
+          <label for="konter-store-name" class="mb-1 block text-xs font-bold">Nama Konter</label>
+          <input id="konter-store-name" class="w-full rounded border p-2 text-sm" placeholder="Nama Konter">
+        </div>
+        <form id="konter-item-form" class="grid gap-2 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <label for="konter-item-name" class="mb-1 block text-xs font-bold">Nama barang / jasa</label>
+            <input id="konter-item-name" required class="w-full rounded border p-2 text-sm" placeholder="Contoh: Pulsa 10.000">
+          </div>
+          <div>
+            <label for="konter-item-price" class="mb-1 block text-xs font-bold">Harga (Rp)</label>
+            <input id="konter-item-price" required type="number" min="1" step="1" class="w-full rounded border p-2 text-sm" placeholder="0">
+          </div>
+          <div>
+            <label for="konter-item-qty" class="mb-1 block text-xs font-bold">Jumlah</label>
+            <input id="konter-item-qty" required type="number" min="1" step="1" value="1" class="w-full rounded border p-2 text-sm">
+          </div>
+          <button type="submit" class="rounded bg-red-700 px-3 py-2 text-sm font-bold text-white hover:bg-red-800 sm:col-span-2">Tambah ke Keranjang</button>
+        </form>
+
+        <div class="mt-5 overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="border-b bg-slate-50 uppercase text-slate-500">
+              <tr><th class="p-2">Barang / Jasa</th><th class="p-2 text-right">Jumlah</th><th class="p-2 text-right">Subtotal</th><th class="p-2"></th></tr>
+            </thead>
+            <tbody id="konter-cart-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <div class="flex items-center justify-between border-b py-2">
+          <span class="font-semibold">Total</span>
+          <output id="konter-total" class="text-xl font-bold">Rp0</output>
+        </div>
+        <div>
+          <label for="konter-customer-phone" class="mb-1 block text-xs font-bold">No. HP Pembeli</label>
+          <input id="konter-customer-phone" type="tel" inputmode="tel" class="w-full rounded border p-2 text-sm" placeholder="08xxxxxxxxxx">
+        </div>
+        <div>
+          <label for="konter-paid" class="mb-1 block text-xs font-bold">Uang diterima (Rp)</label>
+          <input id="konter-paid" type="number" min="0" step="1" class="w-full rounded border p-2 text-sm" placeholder="0">
+        </div>
+        <div class="flex items-center justify-between rounded bg-slate-50 p-3">
+          <span class="text-sm">Kembalian</span>
+          <output id="konter-change" class="font-bold">Rp0</output>
+        </div>
+        <button id="konter-checkout" type="button" class="w-full rounded bg-emerald-700 px-3 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">Simpan Transaksi</button>
+        <p id="konter-checkout-hint" role="status" aria-live="polite" class="text-xs text-slate-500">Tambahkan barang ke keranjang untuk mulai.</p>
+        <button id="konter-cancel-edit" type="button" class="hidden w-full rounded border px-3 py-2 text-xs font-semibold">Batal Edit</button>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="konter-print-browser" type="button" class="rounded border px-3 py-2 text-xs font-semibold">Cetak Struk</button>
+          <button id="konter-print-rawbt" type="button" class="rounded bg-amber-600 px-3 py-2 text-xs font-semibold text-white">Cetak via RawBT</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="flex justify-center border-t pt-5">
+      <div id="konter-receipt-preview" class="receipt-paper">
+        <div id="konter-preview-name" class="mb-2 text-center text-sm font-bold">KONTER</div>
+        <pre id="konter-preview-body" class="m-0 whitespace-pre-wrap break-words font-mono text-[10px] leading-tight">STRUK PEMBAYARAN
+Tambahkan barang untuk melihat pratinjau.</pre>
+      </div>
+    </aside>
+
+    <div class="border-t pt-4">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h3 class="font-bold">Riwayat Penjualan Konter</h3>
+        <button id="konter-print-selected" type="button" disabled class="rounded border px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50">Cetak Pilihan (0)</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="border-b bg-slate-50 uppercase text-slate-500">
+            <tr><th class="p-2"><input id="konter-select-all" type="checkbox" aria-label="Pilih semua penjualan konter" class="h-4 w-4 accent-red-700"></th><th class="p-2">Waktu</th><th class="p-2">No. Transaksi</th><th class="p-2">Nama Konter</th><th class="p-2">No. HP</th><th class="p-2 text-right">Item</th><th class="p-2 text-right">Total</th><th class="p-2 text-right">Aksi</th></tr>
+          </thead>
+          <tbody id="konter-history-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="print-only"><div id="receipt-print" class="receipt-paper"></div></div>
+</div>
 
 <script>
-const $ = (id) => document.getElementById(id);
+const $ = id => document.getElementById(id);
 const fields = {
-  number: $('receipt-number'),
-  date: $('transaction-date'),
-  operator: $('operator'),
-  store: $('store-name'),
-  code: $('receipt-code'),
-  location: $('location'),
-  shift: $('shift'),
-  pump: $('pump-number'),
-  vehicle: $('vehicle-number'),
-  fuel: $('fuel-type'),
-  customFuel: $('custom-fuel'),
-  mode: $('calculation-mode'),
-  liters: $('liters'),
-  price: $('price'),
-  nonSubsidy: $('non-subsidy-price'),
-  paymentTotal: $('payment-total'),
-  payment: $('payment-method'),
-  notes: $('notes'),
-  paper: $('paper-width')
+  number: $('receipt-number'), date: $('transaction-date'), store:$('store-name'),
+  operator: $('operator'), vehicle: $('vehicle-number'), fuel:$('fuel-type'),
+  customFuel: $('custom-fuel'), liters: $('liters'), price:$('price'),
+  total: $('payment-total')
 };
 
-let records = [], loadedRecordId = null, printerConnection = { type: null, device: null, usbEndpoint: null };
-const KEY = 'struk_bbm_records_v1';
-const DEFAULT_NON_SUBSIDY_PRICE = 15892;
+let records = [];
+const KEY = 'struk_bbm_rpp02n';
+let konterCart = [];
+let konterSales = [];
+let konterEditingSaleNum = null;
+let selectedReceiptIds = new Set();
+let selectedKonterSaleNums = new Set();
+const KONTER_KEY = 'konter_sales_rpp02n';
+const KONTER_NAME_KEY = 'konter_name_rpp02n';
 
-const rupiah = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Math.round(Number(v) || 0));
-const literText = (v) => Number(v || 0).toLocaleString('id-ID', { maximumFractionDigits: 3 });
-const localDate = (iso) => iso ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso)) : '-';
-const dateInputValue = (d = new Date()) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-const newNumber = () => {
-  const d = new Date();
-  return `BBM-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${String(d.getTime()).slice(-5)}`;
-};
-const selectedFuel = () => fields.fuel.value === 'Lainnya' ? fields.customFuel.value.trim() : fields.fuel.value;
-const saveDB = () => localStorage.setItem(KEY, JSON.stringify(records));
+const rupiah = v => 'Rp' + Math.round(v || 0).toLocaleString('id-ID');
+const dateStr = iso => iso ? new Date(iso).toLocaleString('id-ID', {dateStyle:'short', timeStyle:'short'}) : '-';
 
-function notify(message, type = 'success') {
-  const e = $('notice');
-  const c = {
-    success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-    error: 'border-red-200 bg-red-50 text-red-800',
-    info: 'border-cyan-200 bg-cyan-50 text-cyan-800'
-  };
-  e.className = `mb-5 rounded-xl border px-4 py-3 text-sm ${c[type] || c.info}`;
-  e.textContent = message;
-  e.classList.remove('hidden');
-  clearTimeout(notify.t);
-  notify.t = setTimeout(() => e.classList.add('hidden'), 5000);
-}
-
-function setSync(text, color = 'bg-emerald-400') {
-  $('sync-status').textContent = text;
-  $('sync-dot').className = `h-2 w-2 rounded-full ${color}`;
-}
-
-function validateNumeric(show) {
-  const p = Number(fields.price.value || 0);
-  const l = Number(fields.liters.value || 0);
-  const t = Number(fields.paymentTotal.value || 0);
-
-  const pm = p > 0 ? '' : 'Harga per liter harus lebih besar dari nol.';
-  const lm = fields.mode.value === 'liter' && !(l > 0) ? 'Jumlah liter harus lebih besar dari nol.' : '';
-  const tm = fields.mode.value === 'total' && !(t > 0) ? 'Total pembayaran harus lebih besar dari nol.' : '';
-
-  $('price-error').textContent = show || p ? pm : '';
-  $('liters-error').textContent = show || l ? lm : '';
-  $('total-error').textContent = show || t ? tm : '';
-
-  return !pm && !lm && !tm;
-}
-
-function getDraft() {
-  const liters = Number(fields.liters.value || 0);
-  const price = Number(fields.price.value || 0);
-  const paymentTotal = Number(fields.paymentTotal.value || 0);
-  const total = Math.round(fields.mode.value === 'total' ? paymentTotal : liters * price);
-
-  return {
-    id: loadedRecordId || crypto.randomUUID(),
-    nomor_struk: fields.number.value.trim(),
-    tanggal: fields.date.value ? new Date(fields.date.value).toISOString() : '',
-    operator: fields.operator.value.trim(),
-    nama_spbu: fields.store.value.trim(),
-    kode_struk: fields.code.value.trim(),
-    lokasi: fields.location.value.trim(),
-    shift: fields.shift.value.trim(),
-    pulau_pompa: fields.pump.value.trim(),
-    nomor_kendaraan: fields.vehicle.value.trim().toUpperCase(),
-    jenis_bbm: selectedFuel(),
-    jumlah_liter: Number(liters.toFixed(3)),
-    harga_per_liter: price,
-    harga_non_subsidi: Number(fields.nonSubsidy.value || 0),
-    total,
-    metode_pembayaran: fields.payment.value,
-    catatan: fields.notes.value.trim()
-  };
-}
-
-function validateDraft(d) {
-  if (!validateNumeric(true)) return 'Perbaiki nilai transaksi terlebih dahulu.';
-  if (!d.nomor_struk || !d.tanggal || !d.operator || !d.nama_spbu || !d.nomor_kendaraan || !d.jenis_bbm) {
-    return 'Lengkapi semua field wajib sebelum melanjutkan.';
+function loadRecords() {
+  try {
+    const data = JSON.parse(localStorage.getItem(KEY) || '[]');
+    records = Array.isArray(data) ? data : [];
+  } catch (error) {
+    records = [];
   }
-  return '';
 }
 
-function updateCalculation() {
-  const p = Number(fields.price.value || 0);
-  const l = Number(fields.liters.value || 0);
-  const t = Number(fields.paymentTotal.value || 0);
+function saveRecords() {
+  localStorage.setItem(KEY, JSON.stringify(records));
+}
 
-  if (fields.mode.value === 'total') {
-    fields.liters.value = p > 0 && t > 0 ? (t / p).toFixed(3) : '';
+function loadKonterSales() {
+  try {
+    const data = JSON.parse(localStorage.getItem(KONTER_KEY) || '[]');
+    konterSales = Array.isArray(data) ? data : [];
+  } catch (error) {
+    konterSales = [];
+  }
+}
+
+function saveKonterSales() {
+  localStorage.setItem(KONTER_KEY, JSON.stringify(konterSales));
+}
+
+function updateKonterSummary() {
+  const total = konterCart.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const paid = Number($('konter-paid').value || 0);
+  $('konter-total').textContent = rupiah(total);
+  $('konter-change').textContent = rupiah(Math.max(0, paid - total));
+  $('konter-checkout').disabled = !konterCart.length;
+  $('konter-checkout-hint').textContent = !konterCart.length
+    ? 'Tambahkan barang ke keranjang untuk mulai.'
+    : paid < total
+      ? `Uang diterima kurang ${rupiah(total - paid)} dari total.`
+      : 'Pembayaran cukup. Transaksi siap disimpan.';
+  renderKonterPreview();
+}
+
+function renderKonter() {
+  const cartBody = $('konter-cart-body');
+  const historyBody = $('konter-history-body');
+  if (!cartBody || !historyBody) return;
+
+  cartBody.replaceChildren();
+  if (!konterCart.length) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td colspan="4" class="p-3 text-center text-slate-500">Keranjang masih kosong.</td>';
+    cartBody.appendChild(row);
+  } else {
+    konterCart.forEach((item, index) => {
+      const row = document.createElement('tr');
+      row.className = 'border-b';
+      const nameCell = document.createElement('td');
+      nameCell.className = 'p-2';
+      nameCell.textContent = item.name;
+      const qtyCell = document.createElement('td');
+      qtyCell.className = 'p-2 text-right';
+      qtyCell.textContent = `${item.qty} x ${rupiah(item.price)}`;
+      const subtotalCell = document.createElement('td');
+      subtotalCell.className = 'p-2 text-right';
+      subtotalCell.textContent = rupiah(item.qty * item.price);
+      const actionCell = document.createElement('td');
+      actionCell.className = 'p-2 text-right';
+      const removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.dataset.removeIndex = index;
+      removeButton.className = 'rounded border px-2 py-1 text-red-700 hover:bg-red-50';
+      removeButton.textContent = 'Hapus';
+      actionCell.appendChild(removeButton);
+      row.append(nameCell, qtyCell, subtotalCell, actionCell);
+      cartBody.appendChild(row);
+    });
   }
 
-  if (fields.mode.value === 'liter') {
-    fields.paymentTotal.value = p > 0 && l > 0 ? String(Math.round(l * p)) : '';
+  historyBody.replaceChildren();
+  const validSaleNums = new Set(konterSales.map(sale => sale.num));
+  selectedKonterSaleNums = new Set([...selectedKonterSaleNums].filter(num => validSaleNums.has(num)));
+  if (!konterSales.length) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td colspan="8" class="p-3 text-center text-slate-500">Belum ada penjualan.</td>';
+    historyBody.appendChild(row);
+  } else {
+    konterSales.forEach(sale => {
+      const row = document.createElement('tr');
+      row.className = 'border-b';
+      const selectCell = document.createElement('td');
+      selectCell.className = 'p-2';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.dataset.saleSelectNum = sale.num;
+      checkbox.setAttribute('aria-label', `Pilih transaksi ${sale.num}`);
+      checkbox.className = 'h-4 w-4 accent-red-700';
+      checkbox.checked = selectedKonterSaleNums.has(sale.num);
+      selectCell.appendChild(checkbox);
+      const dateCell = document.createElement('td');
+      dateCell.className = 'p-2';
+      dateCell.textContent = dateStr(sale.date);
+      const numberCell = document.createElement('td');
+      numberCell.className = 'p-2';
+      numberCell.textContent = sale.num;
+      const counterNameCell = document.createElement('td');
+      counterNameCell.className = 'p-2';
+      counterNameCell.textContent = sale.counterName || localStorage.getItem(KONTER_NAME_KEY) || 'KONTER';
+      const phoneCell = document.createElement('td');
+      phoneCell.className = 'p-2';
+      phoneCell.textContent = sale.phone || '-';
+      const countCell = document.createElement('td');
+      countCell.className = 'p-2 text-right';
+      countCell.textContent = sale.items.reduce((sum, item) => sum + item.qty, 0);
+      const totalCell = document.createElement('td');
+      totalCell.className = 'p-2 text-right';
+      totalCell.textContent = rupiah(sale.total);
+      const actionCell = document.createElement('td');
+      actionCell.className = 'p-2 text-right';
+      const actions = [
+        ['edit', 'Edit', 'rounded border px-1.5 py-1 text-[9px] hover:bg-slate-50'],
+        ['print', 'Cetak', 'rounded border px-1.5 py-1 text-[9px] hover:bg-slate-50'],
+        ['delete', 'Hapus', 'rounded border border-red-200 px-1.5 py-1 text-[9px] text-red-700 hover:bg-red-50']
+      ];
+      actions.forEach(([action, label, className]) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.saleAction = action;
+        button.dataset.saleNum = sale.num;
+        button.className = className;
+        button.textContent = label;
+        actionCell.appendChild(button);
+      });
+      row.append(selectCell, dateCell, numberCell, counterNameCell, phoneCell, countCell, totalCell, actionCell);
+      historyBody.appendChild(row);
+    });
   }
 
-  updatePreview();
-  validateNumeric(false);
-}
-
-function updatePreview(r = getDraft()) {
-  const liters = Number(r.jumlah_liter) || 0;
-  const nonSubsidyPrice = Number(r.harga_non_subsidi) || 0;
-  const total = Number(r.total) || 0;
-  const totalNormal = Math.round(liters * nonSubsidyPrice);
-  const subsidiPerLiter = Math.max(0, nonSubsidyPrice - (Number(r.harga_per_liter) || 0));
-  const subsidi = Math.max(0, totalNormal - total);
-
-  $('calculation-detail').textContent = `${literText(r.jumlah_liter)} L x ${rupiah(r.harga_per_liter)}`;
-  if ($('form-total')) $('form-total').textContent = rupiah(total);
-  $('calculation-normal').textContent = `${literText(liters)} L x ${rupiah(nonSubsidyPrice)} = ${rupiah(totalNormal)}`;
-  $('calculation-subsidy').textContent = `${rupiah(totalNormal)} - ${rupiah(total)} = ${rupiah(subsidi)}`;
-
-  const map = {
-    'preview-code': r.kode_struk || '-',
-    'preview-store': r.nama_spbu || '-',
-    'preview-location': r.lokasi || '-',
-    'preview-shift': r.shift || '-',
-    'preview-trans': r.nomor_struk || '-',
-    'preview-number': r.nomor_struk || '-',
-    'preview-date': localDate(r.tanggal),
-    'preview-operator': r.operator || '-',
-    'preview-pump': r.pulau_pompa || '-',
-    'preview-fuel': r.jenis_bbm || '-',
-    'preview-liter': `${literText(r.jumlah_liter)} L`,
-    'preview-non-subsidi': rupiah(r.harga_non_subsidi || 0),
-    'preview-subsidi': rupiah(subsidiPerLiter),
-    'preview-jual': rupiah(r.harga_per_liter || 0),
-    'preview-vehicle': r.nomor_kendaraan || '-',
-    'preview-total': rupiah(total),
-    'preview-tanpa-subsidi': rupiah(totalNormal),
-    'preview-total-subsidi': rupiah(subsidi),
-    'preview-total-paid': rupiah(total),
-    'preview-subsidy-note': Number(subsidi || 0).toLocaleString('id-ID')
-  };
-
-  Object.entries(map).forEach(([id, value]) => {
-    const el = $(id);
-    if (el) el.textContent = value;
+  historyBody.querySelectorAll('input[data-sale-select-num]').forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) selectedKonterSaleNums.add(checkbox.dataset.saleSelectNum);
+      else selectedKonterSaleNums.delete(checkbox.dataset.saleSelectNum);
+      updateKonterPrintSelection();
+    });
   });
+  updateKonterPrintSelection();
+  $('konter-checkout').textContent = konterEditingSaleNum ? 'Simpan Perubahan' : 'Simpan Transaksi';
+  $('konter-cancel-edit').classList.toggle('hidden', !konterEditingSaleNum);
+  updateKonterSummary();
+}
 
-  if ($('receipt-preview')) {
-    $('receipt-preview').classList.toggle('paper-58', fields.paper.value === '58');
+function checkoutKonter() {
+  const total = konterCart.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const paid = Number($('konter-paid').value || 0);
+  const phone = $('konter-customer-phone').value.trim();
+  if (!konterCart.length) {
+    showSweetAlert({ title: 'Keranjang kosong', text: 'Tambahkan barang sebelum menyimpan transaksi.', icon: 'warning' });
+    return;
+  }
+  if (paid < total) {
+    showSweetAlert({ title: 'Pembayaran kurang', text: `Uang diterima kurang ${rupiah(total - paid)} dari total ${rupiah(total)}.`, icon: 'warning', timer: 3500 });
+    return;
+  }
+
+  const editedSale = konterSales.find(sale => sale.num === konterEditingSaleNum);
+  const updatedSale = {
+    num: editedSale?.num || `KT-${Date.now().toString().slice(-8)}`,
+    date: new Date().toISOString(),
+    counterName: $('konter-store-name').value.trim() || 'KONTER',
+    phone,
+    items: konterCart.map(item => ({ ...item })),
+    total,
+    paid,
+    change: paid - total
+  };
+  if (konterEditingSaleNum) {
+    konterSales = konterSales.map(sale => sale.num === konterEditingSaleNum ? updatedSale : sale);
+  } else {
+    konterSales.unshift(updatedSale);
+  }
+  saveKonterSales();
+  const wasEditing = Boolean(konterEditingSaleNum);
+  konterEditingSaleNum = null;
+  konterCart = [];
+  $('konter-paid').value = '';
+  $('konter-customer-phone').value = '';
+  renderKonter();
+  showSweetAlert({ title: wasEditing ? 'Transaksi diperbarui' : 'Transaksi tersimpan', text: wasEditing ? 'Perubahan penjualan berhasil disimpan.' : 'Penjualan konter berhasil disimpan.', icon: 'success' });
+}
+
+function editKonterSale(sale) {
+  konterEditingSaleNum = sale.num;
+  konterCart = sale.items.map(item => ({ ...item }));
+  $('konter-store-name').value = sale.counterName || localStorage.getItem(KONTER_NAME_KEY) || 'KONTER';
+  $('konter-customer-phone').value = sale.phone || '';
+  $('konter-paid').value = sale.paid || sale.total || '';
+  renderKonter();
+  $('tab-konter').click();
+  $('konter-item-name').focus();
+}
+
+function cancelKonterEdit() {
+  konterEditingSaleNum = null;
+  konterCart = [];
+  $('konter-customer-phone').value = '';
+  $('konter-paid').value = '';
+  $('konter-item-form').reset();
+  renderKonter();
+}
+
+function startNewKonterSale() {
+  cancelKonterEdit();
+  $('konter-item-name').focus();
+}
+
+function handleKonterHistoryAction(event) {
+  const button = event.target.closest('button[data-sale-action]');
+  if (!button) return;
+  const sale = konterSales.find(item => item.num === button.dataset.saleNum);
+  if (!sale) return;
+
+  if (button.dataset.saleAction === 'edit') editKonterSale(sale);
+  if (button.dataset.saleAction === 'print') printKonterReceipt(sale);
+  if (button.dataset.saleAction === 'delete') {
+    confirmSweetAction(`Hapus transaksi ${sale.num} dari riwayat konter?`).then(confirmed => {
+      if (!confirmed) return;
+      konterSales = konterSales.filter(item => item.num !== sale.num);
+      if (konterEditingSaleNum === sale.num) cancelKonterEdit();
+      else {
+        saveKonterSales();
+        renderKonter();
+      }
+      showSweetAlert({ title: 'Terhapus', text: 'Transaksi konter berhasil dihapus.', icon: 'success' });
+    });
   }
 }
 
-function toggleMode() {
-  const totalMode = fields.mode.value === 'total';
-  fields.liters.readOnly = totalMode;
-  fields.paymentTotal.readOnly = !totalMode;
-  fields.liters.classList.toggle('bg-slate-100', totalMode);
-  fields.paymentTotal.classList.toggle('bg-slate-100', !totalMode);
-  updateCalculation();
+function updateKonterPrintSelection() {
+  const button = $('konter-print-selected');
+  const selectAll = $('konter-select-all');
+  if (!button || !selectAll) return;
+  const checkedCount = document.querySelectorAll('#konter-history-body input[data-sale-select-num]:checked').length;
+  const totalCount = konterSales.length;
+  button.textContent = `Cetak Pilihan (${checkedCount})`;
+  button.disabled = checkedCount === 0;
+  selectAll.disabled = totalCount === 0;
+  selectAll.checked = totalCount > 0 && checkedCount === totalCount;
+}
+
+function printSelectedKonterSales() {
+  const selected = konterSales.filter(sale => selectedKonterSaleNums.has(sale.num));
+  if (!selected.length) return;
+  const slips = selected.map(sale => {
+    const slip = document.createElement('div');
+    slip.className = 'print-batch-receipt';
+    const text = document.createElement('pre');
+    text.className = 'print-receipt-text';
+    text.textContent = generateKonterReceiptText(sale);
+    slip.appendChild(text);
+    return slip;
+  });
+  $('receipt-print').replaceChildren(...slips);
+  if (typeof window.print === 'function') window.print();
+}
+
+window.loadRecords = loadRecords;
+window.saveRecords = saveRecords;
+
+function notify(msg) {
+  const e = $('notice');
+  e.textContent = msg;
+  e.classList.remove('hidden');
+  setTimeout(() => e.classList.add('hidden'), 3000);
+}
+
+function showSweetAlert({ title = 'Info', text = '', icon = 'success', timer = 1800 }) {
+  if (window.Swal) {
+    Swal.fire({
+      title,
+      text,
+      icon,
+      timer,
+      showConfirmButton: false,
+      timerProgressBar: true,
+      toast: true,
+      position: 'top-end'
+    });
+    return;
+  }
+  alert(text || title);
+}
+
+async function confirmSweetAction(message) {
+  if (window.Swal) {
+    const result = await Swal.fire({
+      title: 'Konfirmasi',
+      text: message,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, lanjut',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#dc2626',
+      customClass: { popup: 'compact-confirm-popup' }
+    });
+    return result.isConfirmed;
+  }
+  return window.confirm(message);
+}
+
+function formatDecimal(value) {
+  if (!Number.isFinite(value) || value <= 0) return '';
+  return (Math.round(value * 1000) / 1000).toString().replace(/\.0+$\vert{}(?<=\.\d)0+$/, '');
+}
+
+function updatePreview() {
+  const activeField = document.activeElement;
+  const litersValue = Number(fields.liters.value || 0);
+  const priceValue = Number(fields.price.value || 0);
+  const totalValue = Number(fields.total.value || 0);
+
+  if (activeField === fields.total && priceValue > 0 && totalValue > 0) {
+    const calcLiters = totalValue / priceValue;
+    if (fields.liters.value !== formatDecimal(calcLiters)) {
+      fields.liters.value = formatDecimal(calcLiters);
+    }
+  }
+
+  if ((activeField === fields.liters || activeField === fields.price) && priceValue > 0 && litersValue > 0) {
+    const calcTotal = Math.round(litersValue * priceValue);
+    if (String(calcTotal) !== fields.total.value) {
+      fields.total.value = String(calcTotal);
+    }
+  }
+
+  if (priceValue > 0 && totalValue > 0 && (activeField === fields.total || fields.liters.value === '')) {
+    const calcLiters = totalValue / priceValue;
+    if (fields.liters.value !== formatDecimal(calcLiters)) {
+      fields.liters.value = formatDecimal(calcLiters);
+    }
+  }
+
+  const litersFinal = Number(fields.liters.value || 0);
+  const priceFinal = Number(fields.price.value || 0);
+  const totalFinal = Number(fields.total.value || (litersFinal * priceFinal));
+  const fuel = fields.fuel.value === 'Lainnya' ? fields.customFuel.value : fields.fuel.value;
+
+  $('prev-store').textContent = storeHeading(fields.store.value);
+  $('prev-number').textContent = fields.number.value || '-';
+  $('prev-date').textContent = fields.date.value ? dateStr(fields.date.value) : '-';
+  $('prev-operator').textContent = fields.operator.value || '-';
+  $('prev-vehicle').textContent = (fields.vehicle.value || '-').toUpperCase();
+  $('prev-liter').textContent = litersFinal.toFixed(2) + ' L';$('prev-price').textContent = rupiah(priceFinal);
+  $('prev-total').textContent = rupiah(totalFinal);$('form-total').textContent = rupiah(totalFinal);
+}
+
+function storeHeading(value) {
+  const name = String(value || '').trim();
+  if (!name || name.toUpperCase() === 'PERTAMINI') return 'PERTAMINI';
+  if (/^PERTAMINI\s*-/i.test(name)) return name;
+  return `PERTAMINI - ${name}`;
+}
+
+// FORMAT TEKS STRUK KHUSUS PRINT 58MM PAS 32 KARAKTER UNTUK TINGGI 4 INCI
+function clampText(value, max) {
+  const text = String(value ?? '');
+  return text.length > max ? text.slice(0, max) : text;
+}
+
+function centerText(value, width) {
+  const text = clampText(value, width);
+  const pad = Math.max(0, width - text.length);
+  const left = Math.floor(pad / 2);
+  const right = pad - left;
+  return ' '.repeat(left) + text + ' '.repeat(right);
+}
+
+function leftRightText(leftValue, rightValue, width) {
+  const left = clampText(leftValue, Math.max(0, width - 1));
+  const right = clampText(rightValue, Math.max(0, width - left.length));
+  const spaces = Math.max(0, width - left.length - right.length);
+  return left + ' '.repeat(spaces) + right;
+}
+
+function generateTextESC(record = null) {
+  const store = centerText(storeHeading(record ? record.store : fields.store.value), 32);
+  const num = clampText((record ? record.num : fields.number.value) || '-', 18);
+  const dateValue = record ? record.date : fields.date.value;
+  const date = clampText(dateValue ? dateStr(dateValue) : '-', 22);
+  const op = clampText((record ? record.operator : fields.operator.value) || '-', 15);
+  const vehicle = record ? record.veh : fields.vehicle.value;
+  const veh = clampText((vehicle || '-').toUpperCase(), 15);
+  const fuelValue = record ? record.fuel : (fields.fuel.value === 'Lainnya' ? fields.customFuel.value : fields.fuel.value);
+  const fuel = clampText(fuelValue || 'PERTALITE', 32);
+  const liters = record ? record.liters : fields.liters.value;
+  const price = record ? record.price : fields.price.value;
+  const total = record ? record.tot : fields.total.value;
+  const litersText = `${Number(liters || 0).toFixed(2)} L`;
+  const priceText = rupiah(price || 0);
+  const totalText = rupiah(total || 0);
+  const separator = '-'.repeat(32);
+
+  return `${store}\n${separator}\n` +
+    `No.Trans : ${num}\n` +
+    `Waktu    : ${date}\n` +
+    `${separator}\n` +
+    `Operator : ${op}\n` +
+    `Kendaraan: ${veh}\n` +
+    `${separator}\n` +
+    `${fuel}\n` +
+    `${leftRightText(litersText, priceText, 32)}\n` +
+    `${separator}\n` +
+    `${leftRightText('TOTAL', totalText, 32)}\n` +
+    `${separator}\n` +
+    `${centerText('TERIMA KASIH', 32)}\n` +
+    `${centerText('SELAMAT JALAN', 32)}\n`;
+}
+
+function createReceiptPrintBlock(record = null) {
+  const block = document.createElement('div');
+  block.className = 'print-batch-receipt';
+  block.style.marginBottom = '3mm';
+  block.style.paddingBottom = '2mm';
+  block.style.borderBottom = '1px dashed #777';
+  const previewLogo = $('receipt-preview').querySelector('.receipt-logo');
+  const printLogo = previewLogo.cloneNode();
+  printLogo.classList.add('print-receipt-logo');
+  const storeName = document.createElement('div');
+  storeName.className = 'print-store-heading';
+  storeName.textContent = storeHeading(record ? record.store : fields.store.value);
+  const receiptText = document.createElement('pre');
+  receiptText.className = 'print-receipt-text';
+  receiptText.textContent = generateTextESC(record).split('\n').slice(1).join('\n');
+  block.append(printLogo, storeName, receiptText);
+  return block;
+}
+
+function printReceipts(receiptRecords) {
+  if (!receiptRecords.length) return;
+  $('receipt-print').replaceChildren(...receiptRecords.map(record => createReceiptPrintBlock(record)));
+  if (typeof window.print === 'function') {
+    window.print();
+  }
+}
+
+function printReceipt() {
+  printReceipts([null]);
+}
+
+function generateKonterReceiptText(sale = null, includeCounterName = true, includeDraft = false) {
+  let items = sale ? sale.items : konterCart;
+  if (!sale && includeDraft) {
+    const draftName = $('konter-item-name').value.trim();
+    const draftPrice = Number($('konter-item-price').value || 0);
+    const draftQty = Number($('konter-item-qty').value || 1);
+    if (draftName || draftPrice > 0) {
+      items = [...items, { name: draftName || '-', price: draftPrice, qty: Number.isInteger(draftQty) && draftQty > 0 ? draftQty : 1 }];
+    }
+  }
+  if (!items.length && !includeDraft) return '';
+
+  const total = sale ? sale.total : items.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const paid = sale ? sale.paid : Number($('konter-paid').value || 0);
+  const phone = sale ? sale.phone : $('konter-customer-phone').value.trim();
+  const counterName = sale ? (sale.counterName || $('konter-store-name').value.trim()) : $('konter-store-name').value.trim();
+  const separator = '-'.repeat(32);
+  const lines = [];
+  if (includeCounterName) lines.push(centerText(counterName || 'KONTER', 32));
+  lines.push(
+    centerText('STRUK PEMBAYARAN', 32),
+    separator,
+    `No.Trans : ${sale ? sale.num : `KT-${Date.now().toString().slice(-8)}`}`,
+    `Waktu    : ${sale ? dateStr(sale.date) : dateStr(new Date().toISOString())}`
+  );
+  if (phone) lines.push(`No. HP   : ${clampText(phone, 20)}`);
+  lines.push(separator);
+  if (items.length) {
+    items.forEach(item => {
+      const name = String(item.name || '-').toUpperCase();
+      for (let offset = 0; offset < name.length; offset += 32) lines.push(name.slice(offset, offset + 32));
+      lines.push(leftRightText(`${item.qty} x ${rupiah(item.price)}`, rupiah(item.qty * item.price), 32));
+    });
+  } else {
+    lines.push('Belum ada barang di keranjang');
+  }
+  lines.push(separator, leftRightText('TOTAL', rupiah(total), 32));
+  if (paid > 0) lines.push(leftRightText('DIBAYAR', rupiah(paid), 32), leftRightText('KEMBALIAN', rupiah(Math.max(0, paid - total)), 32));
+  lines.push(separator, centerText('TERIMA KASIH', 32));
+  return lines.join('\n');
+}
+
+function renderKonterPreview() {
+  const preview = $('konter-preview-body');
+  if (!preview) return;
+  const name = $('konter-store-name').value.trim() || 'KONTER';
+  $('konter-preview-name').textContent = name;
+  preview.textContent = generateKonterReceiptText(null, false, true);
+}
+
+function printKonterReceipt(sale = null) {
+  if (!sale && !konterCart.length) sale = konterSales[0] || null;
+  if (!sale && !konterCart.length) {
+    showSweetAlert({ title: 'Keranjang kosong', text: 'Tambahkan barang sebelum mencetak.', icon: 'warning' });
+    return;
+  }
+  const heading = document.createElement('div');
+  heading.className = 'print-konter-heading';
+  heading.textContent = sale?.counterName || $('konter-store-name').value.trim() || 'KONTER';
+  const receiptText = document.createElement('pre');
+  receiptText.className = 'print-receipt-text';
+  receiptText.textContent = generateKonterReceiptText(sale, false);
+  $('receipt-print').replaceChildren(heading, receiptText);
+  if (typeof window.print === 'function') window.print();
+}
+
+// CETAK VIA APLIKASI RAWBT
+function launchRawBT(text) {
+  const bytes = new TextEncoder().encode(text);
+  const binaryText = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
+  const encodedText = btoa(binaryText);
+
+  notify('Membuka RawBT...');
+
+  const link = document.createElement('a');
+  link.href = `rawbt:base64,${encodedText}`;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => link.remove(), 1000);
+}
+
+function printRawBT() {
+  launchRawBT(generateTextESC());
+}
+
+function printKonterRawBT(sale = null) {
+  if (!sale && !konterCart.length) sale = konterSales[0] || null;
+  const text = generateKonterReceiptText(sale);
+  if (!text) {
+    showSweetAlert({ title: 'Keranjang kosong', text: 'Tambahkan barang sebelum mencetak.', icon: 'warning' });
+    return;
+  }
+  launchRawBT(text);
+}
+
+function downloadExcel() {
+  if (!window.XLSX) {
+    showSweetAlert({ title: 'Excel tidak tersedia', text: 'Periksa koneksi internet lalu coba lagi.', icon: 'error' });
+    return;
+  }
+
+  loadRecords();
+  const fuel = fields.fuel.value === 'Lainnya' ? (fields.customFuel.value || 'Lainnya') : fields.fuel.value;
+  const workbook = XLSX.utils.book_new();
+  const receiptSheet = XLSX.utils.aoa_to_sheet([
+    ['Data Struk BBM'],
+    ['No. Struk', fields.number.value || '-'],
+    ['Tanggal & Jam', fields.date.value || '-'],
+    ['SPBU / Toko', storeHeading(fields.store.value)],
+    ['Operator', fields.operator.value || '-'],
+    ['Kendaraan', fields.vehicle.value || '-'],
+    ['Jenis BBM', fuel],
+    ['Jumlah Liter', Number(fields.liters.value || 0)],
+    ['Harga per Liter', Number(fields.price.value || 0)],
+    ['Total Bayar', Number(fields.total.value || 0)]
+  ]);
+  receiptSheet['!cols'] = [{ wch: 22 }, { wch: 30 }];
+  XLSX.utils.book_append_sheet(workbook, receiptSheet, 'Struk');
+
+  const historySheet = XLSX.utils.aoa_to_sheet([
+    ['No. Struk', 'Tanggal & Jam', 'SPBU / Toko', 'Operator', 'Kendaraan', 'Jenis BBM', 'Jumlah Liter', 'Harga per Liter', 'Total Bayar'],
+    ...records.map(item => [item.num || '', item.date || '', item.store ? storeHeading(item.store) : '', item.operator || '', item.veh || '', item.fuel || '', Number(item.liters || 0), Number(item.price || 0), Number(item.tot || 0)])
+  ]);
+  historySheet['!cols'] = [{ wch: 18 }, { wch: 20 }, { wch: 24 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 18 }, { wch: 16 }];
+  XLSX.utils.book_append_sheet(workbook, historySheet, 'Riwayat');
+
+  const fileNumber = (fields.number.value || 'Struk-BBM').replace(/[\\/:*?"<>|]/g, '-');
+  XLSX.writeFile(workbook, `Struk-${fileNumber}.xlsx`);
+  showSweetAlert({ title: 'Berhasil', text: 'File Excel berhasil diunduh.', icon: 'success' });
 }
 
 function resetForm() {
-  loadedRecordId = null;
-  fields.number.value = newNumber();
-  fields.date.value = dateInputValue();
-  fields.operator.value = '';
+  $('receipt-number').dataset.recordId = '';
+  fields.number.value = 'BBM-' + Date.now().toString().slice(-6);
+  fields.date.value = new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
   fields.store.value = '';
-  fields.code.value = '';
-  fields.location.value = '';
-  fields.shift.value = '';
-  fields.pump.value = '';
+  fields.operator.value = '';
   fields.vehicle.value = '';
-  fields.fuel.value = 'Pertalite';
-  fields.customFuel.value = '';
-  fields.nonSubsidy.value = String(DEFAULT_NON_SUBSIDY_PRICE);
-  fields.mode.value = 'total';
   fields.liters.value = '';
   fields.price.value = '';
-  fields.paymentTotal.value = '';
-  fields.payment.value = 'Tunai';
-  fields.notes.value = '';
-  fields.paper.value = '80';
-
-  const custom = $('custom-fuel-wrap');
-  if (custom) custom.classList.add('hidden');
-
-  toggleMode();
+  fields.total.value = '';
   updatePreview();
 }
 
-function loadRecord(r) {
-  loadedRecordId = r.id;
-  fields.number.value = r.nomor_struk;
-  fields.date.value = r.tanggal ? dateInputValue(new Date(r.tanggal)) : dateInputValue();
-  fields.operator.value = r.operator || '';
-  fields.store.value = r.nama_spbu || '';
-  fields.vehicle.value = r.nomor_kendaraan || '';
-  fields.code.value = r.kode_struk || '';
-  fields.location.value = r.lokasi || '';
-  fields.shift.value = r.shift || '';
-  fields.pump.value = r.pulau_pompa || '';
-  fields.notes.value = r.catatan || '';
+function fillFormFromRecord(record) {
+  if (!record) return;
 
-  const exists = [...fields.fuel.options].some((o) => o.value === r.jenis_bbm);
-  fields.fuel.value = exists ? r.jenis_bbm : 'Lainnya';
-  fields.customFuel.value = exists ? '' : (r.jenis_bbm || '');
-  const custom = $('custom-fuel-wrap');
-  if (custom) custom.classList.toggle('hidden', exists);
+  $('receipt-number').dataset.recordId = record.id || '';
+  fields.number.value = record.num || '';
+  fields.date.value = record.date || '';
+  fields.store.value = record.store || '';
+  fields.operator.value = record.operator || '';
+  fields.vehicle.value = record.veh || '';
 
-  fields.mode.value = 'liter';
-  fields.liters.value = String(r.jumlah_liter || 0);
-  fields.price.value = String(r.harga_per_liter || 0);
-  fields.paymentTotal.value = String(r.total || 0);
-  fields.nonSubsidy.value = String(r.harga_non_subsidi ?? 0);
-  fields.payment.value = r.metode_pembayaran || 'Tunai';
-  fields.paper.value = '80';
+  const selectValues = ['Pertalite', 'Pertamax', 'Solar', 'Dexlite', 'Lainnya'];
+  if (record.fuel && selectValues.includes(record.fuel)) {
+    fields.fuel.value = record.fuel;
+    fields.customFuel.value = '';
+  } else {
+    fields.fuel.value = 'Lainnya';
+    fields.customFuel.value = record.fuel || '';
+  }
 
-  toggleMode();
-  updatePreview(r);
-}
+  fields.liters.value = record.liters || '';
+  fields.price.value = record.price || '';
+  fields.total.value = record.tot || '';
 
-function showTab(tabName) {
-  const transaction = tabName === 'transaction';
-  $('transaction-view').classList.toggle('hidden', !transaction);
-  $('history-view').classList.toggle('hidden', transaction);
-  $('tab-transaksi').classList.toggle('active', transaction);
-  $('tab-riwayat').classList.toggle('active', !transaction);
+  $('custom-fuel-wrap').classList.toggle('hidden', fields.fuel.value !== 'Lainnya');
+  updatePreview();
 }
 
 function renderHistory() {
-  const q = ($('history-search')?.value || '').trim().toLowerCase();
-  const matches = records.filter((r) => [r.nomor_struk, r.tanggal, r.nomor_kendaraan, r.jenis_bbm].join(' ').toLowerCase().includes(q));
-  const body = $('history-body');
-  body.innerHTML = '';
+  const tbody = $('history-body');
+  if (!tbody) return;
 
-  matches.forEach((r) => {
+  loadRecords();
+  const validIds = new Set(records.map(item => String(item.id)));
+  selectedReceiptIds = new Set([...selectedReceiptIds].filter(id => validIds.has(id)));
+  tbody.innerHTML = '';
+
+  if (!records.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="p-3 text-center text-slate-500">Belum ada riwayat transaksi.</td></tr>';
+    updateHistoryPrintControls();
+    return;
+  }
+
+  records.forEach(item => {
     const tr = document.createElement('tr');
-    tr.className = 'history-row border-t';
+    tr.className = 'border-b';
     tr.innerHTML = `
-      <td class="px-4 py-3">
-        <p class="font-bold">${r.nomor_struk}</p>
-        <p class="mt-0.5 text-xs text-slate-500">${localDate(r.tanggal)}</p>
-      </td>
-      <td class="px-4 py-3 font-semibold">${r.nomor_kendaraan}</td>
-      <td class="px-4 py-3">
-        <p>${r.jenis_bbm}</p>
-        <p class="mt-0.5 text-xs text-slate-500">${literText(r.jumlah_liter)} L ? ${rupiah(r.harga_per_liter)}</p>
-      </td>
-      <td class="px-4 py-3 text-right font-bold">${rupiah(r.total)}</td>
-      <td class="px-4 py-3">
-        <div class="flex justify-end gap-2">
-          <button class="view rounded-md border px-2.5 py-1.5 text-xs font-bold" type="button">Lihat</button>
-          <button class="print rounded-md border border-cyan-700 px-2.5 py-1.5 text-xs font-bold text-cyan-800" type="button">Cetak</button>
-          <button class="del rounded-md border border-red-200 px-2.5 py-1.5 text-xs font-bold text-red-700" type="button">Hapus</button>
+      <td class="p-2"><input type="checkbox" data-select-id="${item.id || ''}" aria-label="Pilih struk ${item.num || ''}" class="h-4 w-4 accent-red-700" ${selectedReceiptIds.has(String(item.id)) ? 'checked' : ''}></td>
+      <td class="p-2">${item.num || '-'}<br><span class="text-slate-500">${item.date ? dateStr(item.date) : '-'}</span></td>
+      <td class="p-2">${(item.veh || '-').toUpperCase()}</td>
+      <td class="p-2">${item.fuel || '-'}</td>
+      <td class="p-2 text-right">${rupiah(item.tot || 0)}</td>
+      <td class="p-2 text-right">
+        <div class="flex justify-end gap-1">
+          <button type="button" data-action="edit" data-id="${item.id || ''}" class="rounded border px-1.5 py-0.5 text-[9px] leading-none hover:bg-slate-50">Edit</button>
+          <button type="button" data-action="print" data-id="${item.id || ''}" class="rounded border px-1.5 py-0.5 text-[9px] leading-none hover:bg-slate-50">Cetak</button>
+          <button type="button" data-action="delete" data-id="${item.id || ''}" class="rounded border border-red-200 px-1.5 py-0.5 text-[9px] leading-none text-red-600 hover:bg-red-50">Hapus</button>
         </div>
-      </td>`;
-
-    tr.querySelector('.view').onclick = () => {
-      loadRecord(r);
-      showTab('transaction');
-      notify('Struk dimuat dari riwayat.', 'info');
-    };
-
-    tr.querySelector('.print').onclick = () => {
-      loadRecord(r);
-      showTab('transaction');
-      printReceipt();
-    };
-
-    tr.querySelector('.del').onclick = () => {
-      if (confirm('Hapus struk ini?')) {
-        records = records.filter((x) => x.id !== r.id);
-        saveDB();
-        renderHistory();
-        setSync(`${records.length} struk tersimpan`);
-        notify('Struk berhasil dihapus.');
-      }
-    };
-
-    body.appendChild(tr);
+      </td>
+    `;
+    tbody.appendChild(tr);
   });
 
-  $('history-empty').classList.toggle('hidden', matches.length > 0);
-  $('history-count').textContent = `${matches.length} dari ${records.length} struk ditampilkan`;
+  tbody.querySelectorAll('input[data-select-id]').forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) selectedReceiptIds.add(checkbox.dataset.selectId);
+      else selectedReceiptIds.delete(checkbox.dataset.selectId);
+      updateHistoryPrintControls();
+    });
+  });
+
+  tbody.querySelectorAll('button[data-action]').forEach(button => {
+    button.addEventListener('click', () => {
+      const id = Number(button.dataset.id);
+      const record = records.find(item => Number(item.id) === id);
+      if (!record) return;
+
+      if (button.dataset.action === 'edit') {
+        fillFormFromRecord(record);
+        $('tab-transaksi').click();
+        showSweetAlert({ title: 'Edit data', text: 'Data riwayat siap diubah.', icon: 'info' });
+      }
+
+      if (button.dataset.action === 'delete') {
+        confirmSweetAction('Hapus struk ini dari riwayat?').then(ok => {
+          if (!ok) return;
+          records = records.filter(item => Number(item.id) !== id);
+          saveRecords();
+          renderHistory();
+          showSweetAlert({ title: 'Berhasil', text: 'Struk berhasil dihapus.', icon: 'success' });
+        });
+      }
+
+      if (button.dataset.action === 'print') {
+        printReceipts([record]);
+        showSweetAlert({ title: 'Cetak', text: 'Proses pencetakan dimulai.', icon: 'success', timer: 1200 });
+      }
+    });
+  });
+  updateHistoryPrintControls();
 }
 
-async function saveReceipt(e) {
-  e.preventDefault();
-  const d = getDraft();
-  const err = validateDraft(d);
-  if (err) return notify(err, 'error');
-
-  const idx = records.findIndex((x) => x.id === d.id);
-  if (idx >= 0) records[idx] = d;
-  else records.unshift(d);
-
-  saveDB();
-  loadedRecordId = d.id;
-  renderHistory();
-  setSync(`${records.length} struk tersimpan`);
-  notify(idx >= 0 ? 'Perubahan struk berhasil disimpan.' : 'Struk berhasil disimpan ke riwayat.');
+function updateHistoryPrintControls() {
+  const button = $('history-print-selected');
+  const selectAll = $('history-select-all');
+  const countLabel = $('history-selected-count');
+  if (!button || !selectAll || !countLabel) return;
+  const ids = records.map(item => String(item.id));
+  const selectedCount = document.querySelectorAll('#history-body input[data-select-id]:checked').length;
+  button.textContent = `Cetak Pilihan (${selectedCount})`;
+  countLabel.textContent = `${selectedCount} struk dipilih`;
+  button.disabled = selectedCount === 0;
+  selectAll.disabled = ids.length === 0;
+  selectAll.checked = ids.length > 0 && selectedCount === ids.length;
 }
 
-function applyPrintLayout() {
-  const width = fields.paper.value === '58' ? '58mm' : '80mm';
-  const padding = fields.paper.value === '58' ? '2mm' : '3mm';
-  const style = document.createElement('style');
-  style.id = 'dynamic-print';
-  style.textContent = `@page{size:${width} auto;margin:0}#receipt-print{width:${width}!important;padding:${padding}!important}`;
-  const prev = document.getElementById('dynamic-print');
-  if (prev) prev.remove();
-  document.head.appendChild(style);
-
-  const printArea = $('receipt-print');
-  printArea.className = `receipt-paper ${fields.paper.value === '58' ? 'paper-58' : ''} text-xs leading-relaxed`;
-  printArea.innerHTML = $('receipt-preview').innerHTML;
+function printSelectedReceipts() {
+  const selected = records.filter(item => selectedReceiptIds.has(String(item.id)));
+  printReceipts(selected);
 }
 
-function browserPrint() {
-  applyPrintLayout();
-  window.print();
-}
-
-function receiptText(d) {
-  return `${d.nama_spbu}
-STRUK PEMBELIAN BBM
---------------------------------
-No. ${d.nomor_struk}
-${localDate(d.tanggal)}
-Operator: ${d.operator}
-Kendaraan: ${d.nomor_kendaraan}
-Bayar: ${d.metode_pembayaran}
---------------------------------
-${d.jenis_bbm}
-${literText(d.jumlah_liter)} L x ${rupiah(d.harga_per_liter)}
-TOTAL: ${rupiah(d.total)}
-${d.catatan ? `Catatan: ${d.catatan}
-` : ''}--------------------------------
-TERIMA KASIH
-
-
-`;
-}
-
-async function connectPrinter() {
-  try {
-    if (!('serial' in navigator)) {
-      return notify('Browser belum mendukung Web Serial. Gunakan Chrome/Edge atau gunakan tombol cetak browser.', 'info');
-    }
-
-    const port = await navigator.serial.requestPort();
-    await port.open({ baudRate: 9600 });
-    printerConnection = { type: 'serial', device: port };
-    $('printer-status').textContent = 'Printer terhubung';
-    $('connect-button').classList.add('hidden');
-    $('disconnect-button').classList.remove('hidden');
-    notify('Printer berhasil terhubung.', 'success');
-  } catch (e) {
-    notify('Koneksi printer gagal atau dibatalkan.', 'error');
-  }
-}
-
-async function disconnectPrinter() {
-  try {
-    if (printerConnection.device) await printerConnection.device.close();
-  } catch (e) {}
-
-  printerConnection = { type: null, device: null };
-  $('printer-status').textContent = 'Printer belum terhubung';
-  $('connect-button').classList.remove('hidden');
-  $('disconnect-button').classList.add('hidden');
-}
-
-async function printReceipt() {
-  const d = getDraft();
-  const err = validateDraft(d);
-  if (err) return notify(err, 'error');
-
-  updatePreview(d);
-
-  if (!printerConnection.type) return browserPrint();
-
-  try {
-    const enc = new TextEncoder();
-    const data = enc.encode('@' + receiptText(d) + 'V ');
-    const writer = printerConnection.device.writable.getWriter();
-    await writer.write(data);
-    writer.releaseLock();
-    notify('Struk berhasil dikirim ke printer thermal.', 'success');
-  } catch (e) {
-    notify('Cetak langsung gagal, dialihkan ke dialog print.', 'info');
-    browserPrint();
-  }
-}
+window.renderHistory = renderHistory;
+window.printRawBT = printRawBT;
+window.updatePreview = updatePreview;
 
 document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
-
-  try {
-    records = JSON.parse(localStorage.getItem(KEY) || '[]');
-  } catch (e) {
-    records = [];
-  }
-
-  setSync(`${records.length} struk tersimpan`);
+  loadRecords();
+  loadKonterSales();
+  $('konter-store-name').value = localStorage.getItem(KONTER_NAME_KEY) || 'KONTER';
+  if (!localStorage.getItem(KONTER_NAME_KEY)) localStorage.setItem(KONTER_NAME_KEY, 'KONTER');
   resetForm();
   renderHistory();
+  renderKonter();
 
-  $('tab-transaksi').onclick = () => showTab('transaction');
-  $('tab-riwayat').onclick = () => showTab('history');
-  $('receipt-form').onsubmit = saveReceipt;
-  $('new-receipt-button').onclick = () => {
-    resetForm();
-    notify('Form transaksi baru siap digunakan.', 'info');
-  };
+  $('receipt-form').addEventListener('input', updatePreview);
+  $('fuel-type').addEventListener('change', () => {$('custom-fuel-wrap').classList.toggle('hidden', fields.fuel.value !== 'Lainnya');
+    updatePreview();
+  });
+
+  $('btn-new').onclick = resetForm;
+  $('btn-rawbt').onclick = printRawBT;
+  $('btn-excel').onclick = downloadExcel;
+
   $('print-button').onclick = printReceipt;
-  $('connect-button').onclick = connectPrinter;
-  $('disconnect-button').onclick = disconnectPrinter;
-  $('history-search').oninput = renderHistory;
+  $('history-print-selected').onclick = printSelectedReceipts;
+  $('history-select-all').addEventListener('change', event => {
+    selectedReceiptIds = event.target.checked ? new Set(records.map(item => String(item.id))) : new Set();
+    renderHistory();
+  });
+  $('history-body').addEventListener('change', event => {
+    const checkbox = event.target.closest('input[data-select-id]');
+    if (!checkbox) return;
+    if (checkbox.checked) selectedReceiptIds.add(checkbox.dataset.selectId);
+    else selectedReceiptIds.delete(checkbox.dataset.selectId);
+    updateHistoryPrintControls();
+  });
+  $('konter-print-browser').onclick = () => printKonterReceipt();
+  $('konter-print-rawbt').onclick = () => printKonterRawBT();
+  $('konter-print-selected').onclick = printSelectedKonterSales;
+  $('konter-select-all').addEventListener('change', event => {
+    selectedKonterSaleNums = event.target.checked ? new Set(konterSales.map(sale => sale.num)) : new Set();
+    renderKonter();
+  });
+  $('konter-history-body').addEventListener('click', handleKonterHistoryAction);
+  $('konter-cancel-edit').onclick = cancelKonterEdit;
+  $('konter-store-name').addEventListener('input', event => {
+    const name = event.target.value.trim();
+    if (name) localStorage.setItem(KONTER_NAME_KEY, name);
+    else localStorage.removeItem(KONTER_NAME_KEY);
+    renderKonterPreview();
+  });
+  $('konter-customer-phone').addEventListener('input', renderKonterPreview);
 
-  fields.mode.onchange = toggleMode;
-  fields.fuel.onchange = () => {
-    const custom = $('custom-fuel-wrap');
-    if (custom) custom.classList.toggle('hidden', fields.fuel.value !== 'Lainnya');
-    updatePreview();
-  };
+  $('konter-item-form').addEventListener('submit', event => {
+    event.preventDefault();
+    const name = $('konter-item-name').value.trim();
+    const price = Number($('konter-item-price').value);
+    const qty = Number($('konter-item-qty').value);
+    if (!name || !Number.isFinite(price) || price < 1 || !Number.isInteger(qty) || qty < 1) return;
 
-  [fields.liters, fields.price, fields.nonSubsidy, fields.paymentTotal].forEach((x) => {
-    x.oninput = updateCalculation;
+    konterCart.push({ name, price, qty });
+    $('konter-item-form').reset();
+    renderKonter();
+    $('konter-item-name').focus();
+  });
+  $('konter-item-form').addEventListener('input', renderKonterPreview);
+
+  $('konter-cart-body').addEventListener('click', event => {
+    const button = event.target.closest('button[data-remove-index]');
+    if (!button) return;
+    konterCart.splice(Number(button.dataset.removeIndex), 1);
+    renderKonter();
   });
 
-  [fields.number, fields.date, fields.operator, fields.store, fields.code, fields.location, fields.shift, fields.pump, fields.nonSubsidy, fields.customFuel, fields.payment, fields.notes, fields.paper].forEach((x) => {
-    x.oninput = updatePreview;
-  });
+  $('konter-paid').addEventListener('input', updateKonterSummary);
+  $('konter-checkout').addEventListener('click', checkoutKonter);
+  $('konter-new-sale').addEventListener('click', startNewKonterSale);
 
-  fields.vehicle.oninput = () => {
-    fields.vehicle.value = fields.vehicle.value.toUpperCase();
-    updatePreview();
+  $('tab-transaksi').onclick = () => {
+    $('transaction-view').classList.remove('hidden');
+    $('history-view').classList.add('hidden');
+    $('konter-view').classList.add('hidden');
+    $('tab-transaksi').classList.add('active');
+    $('tab-riwayat').classList.remove('active');
+    $('tab-konter').classList.remove('active');
   };
 
-  fields.paper.onchange = updatePreview;
+  $('tab-riwayat').onclick = () => {
+    renderHistory();
+    $('transaction-view').classList.add('hidden');
+    $('history-view').classList.remove('hidden');
+    $('konter-view').classList.add('hidden');
+    $('tab-riwayat').classList.add('active');
+    $('tab-transaksi').classList.remove('active');
+    $('tab-konter').classList.remove('active');
+  };
+
+  $('tab-konter').onclick = () => {
+    renderKonter();
+    $('transaction-view').classList.add('hidden');
+    $('history-view').classList.add('hidden');
+    $('konter-view').classList.remove('hidden');
+    $('tab-konter').classList.add('active');
+    $('tab-transaksi').classList.remove('active');
+    $('tab-riwayat').classList.remove('active');
+  };
+
+  $('receipt-form').onsubmit = e => {
+    e.preventDefault();
+    const currentId = Number($('receipt-number').dataset.recordId || 0);
+    const newRecord = {
+      id: currentId || Date.now(),
+      num: fields.number.value,
+      date: fields.date.value,
+      store: fields.store.value,
+      operator: fields.operator.value,
+      veh: fields.vehicle.value,
+      fuel: fields.fuel.value === 'Lainnya' ? (fields.customFuel.value || 'Lainnya') : fields.fuel.value,
+      liters: fields.liters.value,
+      price: fields.price.value,
+      tot: fields.total.value
+    };
+
+    if (currentId) {
+      records = records.map(item => Number(item.id) === currentId ? newRecord : item);
+    } else {
+      records.unshift(newRecord);
+    }
+
+    $('receipt-number').dataset.recordId = '';
+    saveRecords();
+    renderHistory();
+    showSweetAlert({
+      title: currentId ? 'Berhasil diubah' : 'Tersimpan',
+      text: currentId ? 'Struk berhasil diedit!' : 'Struk tersimpan di riwayat!',
+      icon: 'success'
+    });
+  };
 });
 </script>
 </body>
