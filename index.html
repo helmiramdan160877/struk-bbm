@@ -320,6 +320,10 @@ body{margin:0;font-family:Arial,sans-serif;color:var(--ink);background:linear-gr
           <label for="konter-store-name" class="mb-1 block text-xs font-bold">Nama Konter</label>
           <input id="konter-store-name" class="w-full rounded border p-2 text-sm" placeholder="Nama Konter">
         </div>
+        <div class="mb-3">
+          <label for="konter-transaction-number" class="mb-1 block text-xs font-bold">No. Transaksi</label>
+          <input id="konter-transaction-number" class="w-full rounded border p-2 text-sm" autocomplete="off">
+        </div>
         <form id="konter-item-form" class="grid gap-2 sm:grid-cols-2">
           <div class="sm:col-span-2">
             <label for="konter-item-name" class="mb-1 block text-xs font-bold">Nama barang / jasa</label>
@@ -449,6 +453,10 @@ function saveKonterSales() {
   localStorage.setItem(KONTER_KEY, JSON.stringify(konterSales));
 }
 
+function generateKonterTransactionNumber() {
+  return `KT-${Date.now().toString(36).slice(-6).toUpperCase()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+}
+
 function updateKonterSummary() {
   const total = konterCart.reduce((sum, item) => sum + item.price * item.qty, 0);
   const paid = Number($('konter-paid').value || 0);
@@ -575,6 +583,7 @@ function checkoutKonter() {
   const total = konterCart.reduce((sum, item) => sum + item.price * item.qty, 0);
   const paid = Number($('konter-paid').value || 0);
   const phone = $('konter-customer-phone').value.trim();
+  const transactionNumber = $('konter-transaction-number').value.trim() || generateKonterTransactionNumber();
   if (!konterCart.length) {
     showSweetAlert({ title: 'Keranjang kosong', text: 'Tambahkan barang sebelum menyimpan transaksi.', icon: 'warning' });
     return;
@@ -583,10 +592,14 @@ function checkoutKonter() {
     showSweetAlert({ title: 'Pembayaran kurang', text: `Uang diterima kurang ${rupiah(total - paid)} dari total ${rupiah(total)}.`, icon: 'warning', timer: 3500 });
     return;
   }
+  if (konterSales.some(sale => sale.num === transactionNumber && sale.num !== konterEditingSaleNum)) {
+    showSweetAlert({ title: 'Nomor transaksi sudah dipakai', text: 'Ubah nomor transaksi agar tidak duplikat.', icon: 'warning' });
+    return;
+  }
 
   const editedSale = konterSales.find(sale => sale.num === konterEditingSaleNum);
   const updatedSale = {
-    num: editedSale?.num || `KT-${Date.now().toString().slice(-8)}`,
+    num: konterEditingSaleNum ? (editedSale?.num || transactionNumber) : transactionNumber,
     date: new Date().toISOString(),
     counterName: $('konter-store-name').value.trim() || 'KONTER',
     phone,
@@ -606,6 +619,7 @@ function checkoutKonter() {
   konterCart = [];
   $('konter-paid').value = '';
   $('konter-customer-phone').value = '';
+  $('konter-transaction-number').value = generateKonterTransactionNumber();
   renderKonter();
   showSweetAlert({ title: wasEditing ? 'Transaksi diperbarui' : 'Transaksi tersimpan', text: wasEditing ? 'Perubahan penjualan berhasil disimpan.' : 'Penjualan konter berhasil disimpan.', icon: 'success' });
 }
@@ -613,6 +627,7 @@ function checkoutKonter() {
 function editKonterSale(sale) {
   konterEditingSaleNum = sale.num;
   konterCart = sale.items.map(item => ({ ...item }));
+  $('konter-transaction-number').value = sale.num;
   $('konter-store-name').value = sale.counterName || localStorage.getItem(KONTER_NAME_KEY) || 'KONTER';
   $('konter-customer-phone').value = sale.phone || '';
   $('konter-paid').value = sale.paid || sale.total || '';
@@ -626,6 +641,7 @@ function cancelKonterEdit() {
   konterCart = [];
   $('konter-customer-phone').value = '';
   $('konter-paid').value = '';
+  $('konter-transaction-number').value = generateKonterTransactionNumber();
   $('konter-item-form').reset();
   renderKonter();
 }
@@ -890,7 +906,7 @@ function generateKonterReceiptText(sale = null, includeCounterName = true, inclu
   lines.push(
     centerText('STRUK PEMBAYARAN', 32),
     separator,
-    `No.Trans : ${sale ? sale.num : `KT-${Date.now().toString().slice(-8)}`}`,
+    `No.Trans : ${sale ? sale.num : ($('konter-transaction-number').value.trim() || generateKonterTransactionNumber())}`,
     `Waktu    : ${sale ? dateStr(sale.date) : dateStr(new Date().toISOString())}`
   );
   if (phone) lines.push(`No. HP   : ${clampText(phone, 20)}`);
@@ -1024,7 +1040,7 @@ function downloadExcel() {
 
 function resetForm() {
   $('receipt-number').dataset.recordId = '';
-  fields.number.value = 'BBM-' + Date.now().toString().slice(-6);
+  fields.number.value = `BBM-${Date.now().toString(36).slice(-6).toUpperCase()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
   fields.date.value = new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
   fields.store.value = '';
   fields.operator.value = '';
@@ -1165,6 +1181,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadKonterSales();
   $('konter-store-name').value = localStorage.getItem(KONTER_NAME_KEY) || 'KONTER';
   if (!localStorage.getItem(KONTER_NAME_KEY)) localStorage.setItem(KONTER_NAME_KEY, 'KONTER');
+  $('konter-transaction-number').value = generateKonterTransactionNumber();
   resetForm();
   renderHistory();
   renderKonter();
