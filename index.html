@@ -454,7 +454,7 @@ function updateKonterSummary() {
   const paid = Number($('konter-paid').value || 0);
   $('konter-total').textContent = rupiah(total);
   $('konter-change').textContent = rupiah(Math.max(0, paid - total));
-  $('konter-checkout').disabled = !konterCart.length;
+  $('konter-checkout').disabled = false;
   $('konter-checkout-hint').textContent = !konterCart.length
     ? 'Tambahkan barang ke keranjang untuk mulai.'
     : paid < total
@@ -940,7 +940,7 @@ function launchRawBT(text) {
   const binaryText = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
   const encodedText = btoa(binaryText);
 
-  notify('Membuka RawBT...');
+  notify('Membuka RawBT. Jika belum terpasang, unduh dan pasang RawBT dari Play Store.');
 
   const link = document.createElement('a');
   link.href = `rawbt:base64,${encodedText}`;
@@ -950,8 +950,30 @@ function launchRawBT(text) {
   setTimeout(() => link.remove(), 1000);
 }
 
+function requestRawBTPrint(text) {
+  if (!window.Swal) {
+    if (window.confirm('RawBT harus terpasang untuk mencetak. Unduh dan pasang RawBT dari Play Store, lalu tekan OK untuk mencoba mencetak.')) {
+      launchRawBT(text);
+    }
+    return;
+  }
+
+  Swal.fire({
+    title: 'Cetak via RawBT',
+    html: 'Pastikan aplikasi RawBT sudah terpasang.<br><a href="https://play.google.com/store/apps/details?id=ru.a404m.rawbt" target="_blank" rel="noopener" class="text-red-700 underline">Unduh RawBT dari Play Store</a>',
+    icon: 'info',
+    showCancelButton: true,
+    confirmButtonText: 'Lanjut Cetak',
+    cancelButtonText: 'Tutup',
+    confirmButtonColor: '#dc2626',
+    customClass: { popup: 'compact-confirm-popup' }
+  }).then(result => {
+    if (result.isConfirmed) launchRawBT(text);
+  });
+}
+
 function printRawBT() {
-  launchRawBT(generateTextESC());
+  requestRawBTPrint(generateTextESC());
 }
 
 function printKonterRawBT(sale = null) {
@@ -961,7 +983,7 @@ function printKonterRawBT(sale = null) {
     showSweetAlert({ title: 'Keranjang kosong', text: 'Tambahkan barang sebelum mencetak.', icon: 'warning' });
     return;
   }
-  launchRawBT(text);
+  requestRawBTPrint(text);
 }
 
 function downloadExcel() {
