@@ -94,9 +94,9 @@ body{margin:0;font-family:Arial,sans-serif;color:var(--ink);background:linear-gr
   }
   #receipt-print > .print-batch-receipt {
     display: block !important;
-    width: 48mm !important;
-    max-width: 48mm !important;
-    min-width: 48mm !important;
+    width: 50mm !important;
+    max-width: 50mm !important;
+    min-width: 50mm !important;
     height: auto !important;
     min-height: 0 !important;
     margin: 0 auto !important;
@@ -107,16 +107,16 @@ body{margin:0;font-family:Arial,sans-serif;color:var(--ink);background:linear-gr
   }
   #receipt-print * { color: #000000 !important; }
   #receipt-print .receipt-print-copy {
-    font-size: 12px !important;
-    line-height: 1.3 !important;
+    font-size: 14px !important;
+    line-height: 1.35 !important;
     padding: 0 1mm 8mm !important;
   }
   #receipt-print .receipt-line { margin: 5px 0 !important; }
   #receipt-print .receipt-print-copy .text-center:last-child {
     margin-top: 4mm !important;
     padding-bottom: 4mm !important;
-    font-size: 11px !important;
-    line-height: 1.35 !important;
+    font-size: 12px !important;
+    line-height: 1.4 !important;
   }
   #receipt-print .receipt-logo {
     display: block !important;
@@ -139,9 +139,11 @@ body{margin:0;font-family:Arial,sans-serif;color:var(--ink);background:linear-gr
   }
   #receipt-print .konter-thermal-receipt {
     width: 100% !important;
-    font-size: 14px !important;
-    line-height: 1 !important;
-    white-space: pre !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
     overflow-wrap: normal !important;
   }
   #receipt-print .print-store-heading {
@@ -184,6 +186,18 @@ body{margin:0;font-family:Arial,sans-serif;color:var(--ink);background:linear-gr
 .print-only { display: none; }
 
 /* Tampilan responsif khusus HP untuk kasir pulsa/konter */
+/* Cetak thermal browser: ukuran huruf diperbesar untuk kertas 58 mm */
+@media print {
+  @page { size: 58mm auto; margin: 0; }
+  html, body { width: 58mm !important; margin: 0 !important; padding: 0 !important; }
+  #receipt-print > .print-batch-receipt { width: 50mm !important; max-width: 50mm !important; min-width: 50mm !important; }
+  #receipt-print .receipt-print-copy { font-size: 14px !important; line-height: 1.35 !important; }
+  #receipt-print .receipt-print-copy * { font-size: inherit; }
+  #receipt-print .receipt-print-copy .receipt-brand,
+  #receipt-print .receipt-print-copy #prev-store { font-size: 21px !important; line-height: 1.15 !important; }
+  #receipt-print .konter-thermal-receipt { font-size: 16px !important; line-height: 1.2 !important; font-weight: 700 !important; white-space: pre-wrap !important; overflow-wrap: anywhere !important; }
+}
+
 @media (max-width: 640px) {
   .app-shell { width: 100%; max-width: 100%; padding-left: 10px; padding-right: 10px; }
   #konter-view { padding: 12px; border-radius: 14px; }
@@ -1066,7 +1080,7 @@ function printKonterReceipt(sale = null) {
   }
   const receiptText = document.createElement('div');
   receiptText.className = 'print-batch-receipt';
-  receiptText.appendChild(createKonterThermalReceipt(sale, false, 21));
+  receiptText.appendChild(createKonterThermalReceipt(sale, false, 32));
   $('receipt-print').replaceChildren(receiptText);
   if (typeof window.print === 'function') window.print();
 }
