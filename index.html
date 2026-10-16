@@ -29,9 +29,9 @@ body{margin:0;font-family:Arial,sans-serif;color:var(--ink);background:linear-gr
   font-weight: 700 !important;
   box-shadow: 0 10px 20px rgba(0,0,0,.15);
   position: relative;
-  font-size: 11px;
-  line-height: 1.2;
-  padding: 8px;
+  font-size: 12px;
+  line-height: 1.25;
+  padding: 7px 6px;
   border: 1px solid rgba(0,0,0,.1);
 }
 .receipt-logo{display:block;width:auto;max-width:90px;max-height:36px;object-fit:contain;margin:0 auto 2mm}
@@ -105,8 +105,18 @@ body{margin:0;font-family:Arial,sans-serif;color:var(--ink);background:linear-gr
     box-shadow: none !important;
     break-inside: avoid !important;
   }
-  #receipt-print * {
-    color: #000000 !important;
+  #receipt-print * { color: #000000 !important; }
+  #receipt-print .receipt-print-copy {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+    padding: 0 1mm 8mm !important;
+  }
+  #receipt-print .receipt-line { margin: 5px 0 !important; }
+  #receipt-print .receipt-print-copy .text-center:last-child {
+    margin-top: 4mm !important;
+    padding-bottom: 4mm !important;
+    font-size: 11px !important;
+    line-height: 1.35 !important;
   }
   #receipt-print .receipt-logo {
     display: block !important;
@@ -212,6 +222,7 @@ body{margin:0;font-family:Arial,sans-serif;color:var(--ink);background:linear-gr
           <div><label class="block text-xs font-bold">Nama SPBU / Toko *</label><input id="store-name" required class="w-full rounded border p-2 text-xs" placeholder="Nama toko"></div>
           <div><label class="block text-xs font-bold">Operator *</label><input id="operator" required class="w-full rounded border p-2 text-xs" placeholder="Budi"></div>
         </div>
+        <div><label for="pump-address" class="block text-xs font-bold">Alamat POM / SPBU</label><input id="pump-address" class="w-full rounded border p-2 text-xs" placeholder="Contoh: Jl. Raya Cianjur No. 10"></div>
         <div class="grid grid-cols-2 gap-2">
           <div><label class="block text-xs font-bold">No. Kendaraan *</label><input id="vehicle-number" required class="w-full rounded border p-2 text-xs uppercase" placeholder="B 1234 ABC"></div>
           <div><label class="block text-xs font-bold">Jenis BBM *</label>
@@ -256,6 +267,7 @@ body{margin:0;font-family:Arial,sans-serif;color:var(--ink);background:linear-gr
         <div class="text-center">
           <img src="assets/logo-pertamina.png" class="receipt-logo" alt="Logo" onerror="this.style.display='none'">
           <div id="prev-store" class="receipt-brand">PERTAMINA</div>
+          <div id="prev-address" class="text-center" style="font-size:10px;line-height:1.25;overflow-wrap:anywhere"></div>
           <div class="receipt-line"></div>
           <div>No. Trans : <span id="prev-number">-</span></div>
           <div>Waktu : <span id="prev-date">-</span></div>
@@ -412,7 +424,7 @@ body{margin:0;font-family:Arial,sans-serif;color:var(--ink);background:linear-gr
 const $ = id => document.getElementById(id);
 const fields = {
   number: $('receipt-number'), date: $('transaction-date'), store:$('store-name'),
-  operator: $('operator'), vehicle: $('vehicle-number'), fuel:$('fuel-type'),
+  operator: $('operator'), address: $('pump-address'), vehicle: $('vehicle-number'), fuel:$('fuel-type'),
   customFuel: $('custom-fuel'), liters: $('liters'), price:$('price'),
   total: $('payment-total')
 };
@@ -804,6 +816,7 @@ function updatePreview() {
   const fuel = fields.fuel.value === 'Lainnya' ? fields.customFuel.value : fields.fuel.value;
 
   $('prev-store').textContent = storeHeading(fields.store.value);
+  $('prev-address').textContent = fields.address.value.trim();
   $('prev-number').textContent = fields.number.value || '-';
   $('prev-date').textContent = fields.date.value ? dateStr(fields.date.value) : '-';
   $('prev-operator').textContent = fields.operator.value || '-';
@@ -869,11 +882,13 @@ function generateTextESC(record = null) {
   const price = Number(record ? record.price : fields.price.value || 0);
   const total = Number(record ? record.tot : fields.total.value || 0);
   const operator = (record ? record.operator : fields.operator.value) || '-';
+  const address = (record ? record.address : fields.address.value) || ''; 
   const vehicle = ((record ? record.veh : fields.vehicle.value) || '-').toUpperCase();
   const separator = '-'.repeat(30);
 
   return [
     centerText(store, 30),
+    ...(address ? [centerText(address, 30)] : []),
     formatReceiptLine('No. Trans', num),
     formatReceiptLine('Waktu', date),
     separator,
@@ -901,6 +916,7 @@ function createReceiptPrintBlock(record = null) {
   const fuel = record ? record.fuel : (fields.fuel.value === 'Lainnya' ? fields.customFuel.value : fields.fuel.value);
 
   preview.querySelector('#prev-store').textContent = storeHeading(getValue('store', fields.store));
+  preview.querySelector('#prev-address').textContent = (record ? record.address : fields.address.value) || ''; 
   preview.querySelector('#prev-number').textContent = getValue('num', fields.number) || '-';
   preview.querySelector('#prev-date').textContent = date ? dateStr(date) : '-';
   preview.querySelector('#prev-operator').textContent = getValue('operator', fields.operator) || '-';
@@ -1075,7 +1091,7 @@ function requestRawBTPrint(text) {
 }
 
 function printRawBT() {
-  requestRawBTPrint(generateTextESC());
+  requestRawBTPrint(generateTextESC() + '\n\n\n\n' + '\x1B' + 'd' + '\x04');
 }
 
 function printKonterRawBT(sale = null) {
@@ -1159,6 +1175,7 @@ function resetForm() {
   fields.number.value = `BBM-${Date.now().toString(36).slice(-6).toUpperCase()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
   fields.date.value = new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
   fields.store.value = '';
+  fields.address.value = '';
   fields.operator.value = '';
   fields.vehicle.value = '';
   fields.liters.value = '';
@@ -1174,6 +1191,7 @@ function fillFormFromRecord(record) {
   fields.number.value = record.num || '';
   fields.date.value = record.date || '';
   fields.store.value = record.store || '';
+  fields.address.value = record.address || '';
   fields.operator.value = record.operator || '';
   fields.vehicle.value = record.veh || '';
 
@@ -1430,6 +1448,7 @@ document.addEventListener('DOMContentLoaded', () => {
       num: fields.number.value,
       date: fields.date.value,
       store: fields.store.value,
+      address: fields.address.value,
       operator: fields.operator.value,
       veh: fields.vehicle.value,
       fuel: fields.fuel.value === 'Lainnya' ? (fields.customFuel.value || 'Lainnya') : fields.fuel.value,
