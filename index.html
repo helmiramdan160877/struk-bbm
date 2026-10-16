@@ -182,6 +182,25 @@ body{margin:0;font-family:Arial,sans-serif;color:var(--ink);background:linear-gr
   }
 }
 .print-only { display: none; }
+
+/* Tampilan responsif khusus HP untuk kasir pulsa/konter */
+@media (max-width: 640px) {
+  .app-shell { width: 100%; max-width: 100%; padding-left: 10px; padding-right: 10px; }
+  #konter-view { padding: 12px; border-radius: 14px; }
+  #konter-view input, #konter-view textarea, #konter-view select { max-width: 100%; min-width: 0; font-size: 16px; }
+  #konter-view button { min-height: 40px; overflow-wrap: anywhere; }
+  #konter-view .overflow-x-auto { max-width: 100%; }
+  #konter-receipt-preview { width: 58mm; max-width: 100%; padding: 6px; }
+  #konter-preview-body { width: 100%; overflow-wrap: anywhere; }
+  .konter-thermal-receipt { font-size: 12px; line-height: 1.2; overflow-wrap: anywhere; }
+  #konter-view aside { padding-top: 14px; }
+}
+@media (max-width: 380px) {
+  #konter-view h2 { font-size: 1rem; }
+  #konter-view .grid.grid-cols-2 { grid-template-columns: minmax(0, 1fr); }
+  #konter-view .grid.grid-cols-2 > button { grid-column: auto !important; }
+}
+
 </style>
 </head>
 <body>
